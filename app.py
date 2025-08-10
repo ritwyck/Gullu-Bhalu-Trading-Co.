@@ -10,73 +10,103 @@ def realized_volatility(prices):
     return returns.std()
 
 
-def rolling_volatility(prices, window=10):
-    returns = np.log(prices / prices.shift(1)).dropna()
-    return returns.rolling(window=window).std()
-
-
 def load_data(filepath):
     df = pd.read_csv(filepath)
     df["Date"] = pd.to_datetime(df["Date"])
+    # Only clean Close if it's string/object type
+    if df["Close"].dtype == object:
+        df["Close"] = df["Close"].str.replace(",", "").astype(float)
     return df
 
 
-st.title("Stock Volatility Calculator & Chart")
+def plot_stock_metric(df, metric, window=None):
+    if metric == "Volatility":
+        vol = df["Close"].rolling(window).apply(
+            lambda x: realized_volatility(x), raw=False)
+        plot_df = df[["Date"]].copy()
+        plot_df["Volatility"] = vol
+        y_col = "Volatility"
+        ylabel = f"Rolling {window}-day Volatility"
+    else:
+        plot_df = df[["Date", metric]].copy()
+        y_col = metric
+        ylabel = metric
 
-# Load files
+    chart = (
+        alt.Chart(plot_df.dropna())
+        .mark_line()
+        .encode(
+            x=alt.X('Date:T', title='Date'),
+            y=alt.Y(f'{y_col}:Q', title=ylabel)
+        )
+        .properties(width=700, height=400, title=f"{ylabel} over Time")
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+
+# --- Main App ---
+st.title("Stock Volatility & Comparison")
+
 files = [f for f in os.listdir("HistoricalData") if f.endswith(".csv")]
-symbols = [f.split("_")[0] for f in files]
+symbols = [os.path.splitext(f)[0] for f in files]  # removes '.csv'
 
-symbol = st.selectbox("Select stock symbol", options=symbols)
-file_match = [f for f in files if f.startswith(symbol)][0]
-df = load_data(os.path.join("HistoricalData", file_match))
+compare_mode = st.checkbox("Compare multiple stocks")
 
-# Volatility calculation section
-st.subheader("Volatility Calculation")
+if not compare_mode:
+    # SINGLE STOCK VIEW
+    symbol = st.selectbox("Select stock symbol", symbols, key="single_symbol")
+    file_match = [f for f in files if f.startswith(symbol)][0]
+    df = load_data(os.path.join("HistoricalData", file_match))
 
-period_option = st.radio("Select period", options=[
-                         "10 days", "30 days", "Custom"])
-if period_option == "Custom":
-    period = st.number_input("Enter number of days",
-                             min_value=2, max_value=len(df), value=10)
-elif period_option == "10 days":
-    period = 10
+    period = st.radio("Select volatility period", options=[
+                      5, 10, 15, 30, 60, "Custom"], key="single_period")
+    if period == "Custom":
+        period = st.number_input("Enter custom period (days)", min_value=2, max_value=len(
+            df), value=10, key="single_custom_period")
+
+    vol = realized_volatility(df.tail(period)["Close"])
+    st.write(
+        f"**{period}-day Volatility:** {vol:.4f} (decimal), {vol*100:.2f}%")
+
+    metric = st.radio("Select metric to plot", options=[
+                      "Open", "High", "Low", "Close", "Volatility"], key="single_metric")
+    window = 10
+    if metric == "Volatility":
+        window = st.number_input("Volatility rolling window", min_value=2,
+                                 max_value=100, value=10, key="single_vol_window")
+    plot_stock_metric(df, metric, window if metric == "Volatility" else None)
+
 else:
-    period = 30
+    # COMPARE MULTIPLE STOCKS
+    selected_symbols = st.multiselect(
+        "Select 2 to 5 stocks to compare", symbols, default=symbols[:2], key="compare_symbols")
+    if len(selected_symbols) < 2:
+        st.warning("Select at least 2 stocks to compare.")
+    elif len(selected_symbols) > 5:
+        st.warning("Select up to 5 stocks.")
+    else:
+        period = st.radio("Select volatility period", options=[
+                          5, 10, 15, 30, 60, "Custom"], key="compare_period")
+        if period == "Custom":
+            period = st.number_input("Enter custom period (days)", min_value=2,
+                                     max_value=365, value=10, key="compare_custom_period")
 
-vol = realized_volatility(df.tail(period)["Close"])
-st.write(f"**{period}-day Volatility:** {vol:.4f} (decimal), {vol*100:.2f}%")
+        data = []
+        for sym in selected_symbols:
+            file_match = [f for f in files if f.startswith(sym)][0]
+            df = load_data(os.path.join("HistoricalData", file_match))
+            vol = realized_volatility(df.tail(period)["Close"])
+            data.append({"Symbol": sym, f"{period}-day Volatility (decimal)": vol,
+                        f"{period}-day Volatility (%)": vol*100})
 
-# Metric plotting section
-st.subheader("Performance Chart")
+        comp_df = pd.DataFrame(data)
+        st.dataframe(comp_df)
 
-metric = st.radio("Select metric to plot", options=[
-                  "Open", "High", "Low", "Close", "Volatility"])
+        # Plot comparison of volatility bars
+        bar_chart = alt.Chart(comp_df).mark_bar().encode(
+            x=alt.X(f"{period}-day Volatility (%)", title="Volatility (%)"),
+            y=alt.Y('Symbol', sort='-x', title='Stock Symbol'),
+            color='Symbol'
+        ).properties(title=f"Volatility Comparison over {period} days")
 
-if metric == "Volatility":
-    window = st.number_input(
-        "Volatility rolling window for chart", min_value=2, max_value=100, value=10)
-    df["Volatility"] = rolling_volatility(df["Close"], window=window)
-    plot_df = df[["Date", "Volatility"]].dropna()
-    ylabel = f"Rolling {window}-day Volatility"
-    y_col = "Volatility"
-else:
-    plot_df = df[["Date", metric]]
-    ylabel = metric
-    y_col = metric
-
-chart = (
-    alt.Chart(plot_df)
-    .mark_line()
-    .encode(
-        x=alt.X('Date:T', title='Date'),
-        y=alt.Y(f'{y_col}:Q', title=ylabel)
-    )
-    .properties(
-        width=700,
-        height=400,
-        title=f"{ylabel}/Time for {symbol}"
-    )
-)
-
-st.altair_chart(chart, use_container_width=True)
+        st.altair_chart(bar_chart, use_container_width=True)
