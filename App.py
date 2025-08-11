@@ -1,11 +1,13 @@
-import altair as alt
-import numpy as np
-import pandas as pd
-import streamlit as st
+
 from Brain.volatility import realized_volatility, load_data
 from FrontEnd.plot import plot_stock_metric
+import numpy as np
 import sys
 import os
+import pandas as pd
+import streamlit as st
+import altair as alt
+
 
 # --- Main App ---
 st.title("Stock Volatility & Comparison")
