@@ -6,7 +6,6 @@ import altair as alt
 from volatility import realized_volatility, load_data
 from plot import plot_stock_metric
 
-
 # --- Main App ---
 st.title("Stock Volatility & Comparison")
 
