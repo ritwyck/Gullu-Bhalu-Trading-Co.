@@ -3,13 +3,17 @@ import os
 import pandas as pd
 import numpy as np
 import altair as alt
-from volatility import realized_volatility, load_data
-from plot import plot_stock_metric
+
+
+from Brain.volatility import realized_volatility
+from Brain.load_data import load_data
+from FrontEnd.plot import plot_stock_metric
 
 # --- Main App ---
 st.title("Stock Volatility & Comparison")
 
-files = [f for f in os.listdir("HistoricalData") if f.endswith(".csv")]
+files = [f for f in os.listdir(
+    "Vault/Historical_Stock_Data") if f.endswith(".csv")]
 symbols = [os.path.splitext(f)[0] for f in files]  # removes '.csv'
 
 compare_mode = st.checkbox("Compare multiple stocks")
@@ -18,7 +22,7 @@ if not compare_mode:
     # SINGLE STOCK VIEW
     symbol = st.selectbox("Select stock symbol", symbols, key="single_symbol")
     file_match = [f for f in files if f.startswith(symbol)][0]
-    df = load_data(os.path.join("HistoricalData", file_match))
+    df = load_data(os.path.join("Vault/Historical_Stock_Data", file_match))
 
     period = st.radio("Select volatility period", options=[
                       5, 10, 15, 30, 60, "Custom"], key="single_period")
@@ -56,7 +60,8 @@ else:
         data = []
         for sym in selected_symbols:
             file_match = [f for f in files if f.startswith(sym)][0]
-            df = load_data(os.path.join("HistoricalData", file_match))
+            df = load_data(os.path.join(
+                "Vault/Historical_Stock_Data", file_match))
             vol = realized_volatility(df.tail(period)["Close"])
             data.append({"Symbol": sym, f"{period}-day Volatility (decimal)": vol,
                         f"{period}-day Volatility (%)": vol*100})
