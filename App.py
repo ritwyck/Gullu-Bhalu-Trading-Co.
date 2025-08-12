@@ -1,5 +1,5 @@
 
-from Brain.volatility import realized_volatility, load_data
+from Brain.volatility import realized_volatility, load_data, historical_volatility
 from FrontEnd.plot import plot_stock_metric
 import numpy as np
 import sys
@@ -30,9 +30,12 @@ if not compare_mode:
         period = st.number_input("Enter custom period (days)", min_value=2, max_value=len(
             df), value=10, key="single_custom_period")
 
-    vol = realized_volatility(df.tail(period)["Close"])
+    rv = realized_volatility(df.tail(period)["Close"])
+    hv, hv_annual = historical_volatility(df.tail(period)["Close"])
+
+    st.write(f"**{period}-day Realized Volatility:** {rv*100:.2f}%")
     st.write(
-        f"**{period}-day Volatility:** {vol:.4f} (decimal), {vol*100:.2f}%")
+        f"**{period}-day Historical Volatility (Annualized):** {hv_annual*100:.2f}%")
 
     metric = st.radio("Select metric to plot", options=[
                       "Open", "High", "Low", "Close", "Volatility"], key="single_metric")
@@ -41,7 +44,6 @@ if not compare_mode:
         window = st.number_input("Volatility rolling window", min_value=2,
                                  max_value=100, value=10, key="single_vol_window")
     plot_stock_metric(df, metric, window if metric == "Volatility" else None)
-
 else:
     # COMPARE MULTIPLE STOCKS
     selected_symbols = st.multiselect(
@@ -57,23 +59,48 @@ else:
             period = st.number_input("Enter custom period (days)", min_value=2,
                                      max_value=365, value=10, key="compare_custom_period")
 
-        data = []
+        metric = st.radio("Select metric to plot", options=[
+                          "Open", "High", "Low", "Close", "Volatility"], key="compare_metric")
+        window = 10
+        if metric == "Volatility":
+            window = st.number_input("Volatility rolling window", min_value=2,
+                                     max_value=100, value=10, key="compare_vol_window")
+
+        dfs = []
+        results = []
+
         for sym in selected_symbols:
             file_match = [f for f in files if f.startswith(sym)][0]
             df = load_data(os.path.join(
                 "Vault/Historical_Stock_Data", file_match))
-            vol = realized_volatility(df.tail(period)["Close"])
-            data.append({"Symbol": sym, f"{period}-day Volatility (decimal)": vol,
-                        f"{period}-day Volatility (%)": vol*100})
+            if metric == "Volatility":
+                df["Volatility"] = df["Close"].rolling(
+                    window).std() * np.sqrt(window)
+            col_name = metric if metric != "Volatility" else "Volatility"
+            df_plot = df[["Date", col_name]].copy()
+            df_plot["Symbol"] = sym
+            df_plot.rename(columns={col_name: "Value"}, inplace=True)
+            dfs.append(df_plot)
 
-        comp_df = pd.DataFrame(data)
+            rv = realized_volatility(df.tail(period)["Close"])
+            hv, hv_annual = historical_volatility(df.tail(period)["Close"])
+
+            results.append({
+                "Symbol": sym,
+                "Realized Volatility (%)": rv * 100,
+                "Historical Volatility (Annualized %)": hv_annual * 100
+            })
+
+        # Use results here, not data
+        comp_df = pd.DataFrame(results)
         st.dataframe(comp_df)
 
-        # Plot comparison of volatility bars
-        bar_chart = alt.Chart(comp_df).mark_bar().encode(
-            x=alt.X(f"{period}-day Volatility (%)", title="Volatility (%)"),
-            y=alt.Y('Symbol', sort='-x', title='Stock Symbol'),
-            color='Symbol'
-        ).properties(title=f"Volatility Comparison over {period} days")
-
-        st.altair_chart(bar_chart, use_container_width=True)
+        # Combine all for plotting with legend
+        combined_df = pd.concat(dfs)
+        chart = alt.Chart(combined_df).mark_line().encode(
+            x="Date:T",
+            y=alt.Y("Value:Q", title=metric),
+            color="Symbol:N",
+            tooltip=["Date:T", "Symbol:N", "Value:Q"]
+        ).properties(width=700, height=400, title=f"{metric} Comparison")
+        st.altair_chart(chart, use_container_width=True)
