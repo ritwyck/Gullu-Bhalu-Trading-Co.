@@ -37,3 +37,19 @@ def historical_volatility(prices, periods_per_year=252):
     annualized_vol = volatility * np.sqrt(periods_per_year)
 
     return volatility, annualized_vol
+
+
+def volatility_ratio(vol1, vol2=100.0):
+    """
+    Calculate the volatility ratio between two volatility values.
+
+    Parameters:
+    - vol1: float or int, first volatility value
+    - vol2: float or int, second volatility value (default = 100.0)
+
+    Returns:
+    - ratio: float, ratio as (vol1 / vol2) * 100
+    """
+    if vol2 == 0:
+        return float('nan')
+    return (vol1 / vol2) * 100

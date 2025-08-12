@@ -1,5 +1,5 @@
 
-from Brain.volatility import realized_volatility, load_data, historical_volatility
+from Brain.volatility import realized_volatility, load_data, historical_volatility, volatility_ratio
 from FrontEnd.plot import plot_stock_metric
 import numpy as np
 import sys
@@ -33,10 +33,31 @@ if not compare_mode:
     rv = realized_volatility(df.tail(period)["Close"])
     hv, hv_annual = historical_volatility(df.tail(period)["Close"])
 
-    st.write(f"**{period}-day Realized Volatility:** {rv*100:.2f}%")
-    st.write(
-        f"**{period}-day Historical Volatility (Annualized):** {hv_annual*100:.2f}%")
+    # Volatility summary table
+    summary_data = [{
+        "Metric": "Realized Volatility (%)",
+        f"{period}-day Value": rv * 100
+    }, {
+        "Metric": "Historical Volatility (Annualized %)",
+        f"{period}-day Value": hv_annual * 100
+    }]
+    summary_df = pd.DataFrame(summary_data)
+    st.subheader(f"{symbol} Volatility Summary")
+    st.dataframe(summary_df)
 
+    # Calculate volatility ratio using your imported function
+    # Default second volatility is 100 as per your function
+    ratio = volatility_ratio(hv_annual * 100)
+
+    ratio_data = [{
+        "Metric": "Volatility Ratio (%)",
+        f"{period}-day Value": ratio
+    }]
+    ratio_df = pd.DataFrame(ratio_data)
+    st.subheader(f"{symbol} Volatility Ratio")
+    st.dataframe(ratio_df)
+
+    # Now select metric to plot
     metric = st.radio("Select metric to plot", options=[
                       "Open", "High", "Low", "Close", "Volatility"], key="single_metric")
     window = 10
@@ -59,6 +80,44 @@ else:
             period = st.number_input("Enter custom period (days)", min_value=2,
                                      max_value=365, value=10, key="compare_custom_period")
 
+        # Calculate volatility and prepare summary and ratio tables
+        results = []
+        ratio_results = []
+
+        for sym in selected_symbols:
+            file_match = [f for f in files if f.startswith(sym)][0]
+            df = load_data(os.path.join(
+                "Vault/Historical_Stock_Data", file_match))
+
+            rv = realized_volatility(df.tail(period)["Close"])
+            hv, hv_annual = historical_volatility(df.tail(period)["Close"])
+
+            results.append({
+                "Symbol": sym,
+                "Realized Volatility (%)": rv * 100,
+                "Historical Volatility (Annualized %)": hv_annual * 100
+            })
+
+            # Calculate volatility ratio using historical volatility annualized
+            # assumes second vol defaults to 100
+            ratio = volatility_ratio(hv_annual * 100)
+
+            ratio_results.append({
+                "Symbol": sym,
+                "Volatility Ratio (%)": ratio
+            })
+
+        # Display volatility summary table
+        comp_df = pd.DataFrame(results)
+        st.subheader("Volatility Comparison Table")
+        st.dataframe(comp_df)
+
+        # Display volatility ratio table below volatility summary
+        ratio_df = pd.DataFrame(ratio_results)
+        st.subheader("Volatility Ratio Table")
+        st.dataframe(ratio_df)
+
+        # Now let user select metric and window for plotting
         metric = st.radio("Select metric to plot", options=[
                           "Open", "High", "Low", "Close", "Volatility"], key="compare_metric")
         window = 10
@@ -67,8 +126,6 @@ else:
                                      max_value=100, value=10, key="compare_vol_window")
 
         dfs = []
-        results = []
-
         for sym in selected_symbols:
             file_match = [f for f in files if f.startswith(sym)][0]
             df = load_data(os.path.join(
@@ -82,20 +139,6 @@ else:
             df_plot.rename(columns={col_name: "Value"}, inplace=True)
             dfs.append(df_plot)
 
-            rv = realized_volatility(df.tail(period)["Close"])
-            hv, hv_annual = historical_volatility(df.tail(period)["Close"])
-
-            results.append({
-                "Symbol": sym,
-                "Realized Volatility (%)": rv * 100,
-                "Historical Volatility (Annualized %)": hv_annual * 100
-            })
-
-        # Use results here, not data
-        comp_df = pd.DataFrame(results)
-        st.dataframe(comp_df)
-
-        # Combine all for plotting with legend
         combined_df = pd.concat(dfs)
         chart = alt.Chart(combined_df).mark_line().encode(
             x="Date:T",
