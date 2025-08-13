@@ -19,8 +19,8 @@ The app requires the following Python packages:
 - **pandas**: For data manipulation.
 - **numpy**: For numerical calculations.
 - **altair**: For interactive plotting charts.
-- **Brain** (custom or third-party module): Provides volatility calculation utilities such as `load_data`, `historical_volatility`, `realized_volatility`.
-- **FrontEnd** (local package/module): Contains UI components including `singleStockView` and `multiStockView` with main view functions.
+- **Brain** (local module): Provides volatility calculation utilities such as `load_data`, `historical_volatility`, `realized_volatility`.
+- **FrontEnd** (local module): Contains UI components including `singleStockView` and `multiStockView` with main view functions.
 
 ---
 
