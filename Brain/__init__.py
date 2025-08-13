@@ -1,4 +1,4 @@
 # Brain package initializer
 
-from .volatility import realized_volatility
-from .volatility import load_data
+from .Strategy.volatility import realized_volatility
+from .Strategy.volatility import load_data

@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import altair as alt
 
-from Brain.volatility import realized_volatility
+from Brain.Strategy.volatility import realized_volatility
 
 
 def plot_stock_metric(df, metric, window=None):

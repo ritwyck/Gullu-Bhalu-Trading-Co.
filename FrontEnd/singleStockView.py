@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import streamlit as st
-from Brain.volatility import load_data, realized_volatility, historical_volatility
+from Brain.Strategy.volatility import load_data, realized_volatility, historical_volatility
 from FrontEnd.plot import plot_stock_metric
 
 
