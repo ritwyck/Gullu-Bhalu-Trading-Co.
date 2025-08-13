@@ -1,4 +1,4 @@
 HOW TO RUN:
 
     open terminal
-    paste: streamlit run app.py
+    paste: streamlit run Launcher.py
