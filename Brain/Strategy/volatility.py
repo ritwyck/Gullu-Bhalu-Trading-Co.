@@ -3,8 +3,12 @@ import numpy as np
 
 
 def realized_volatility(prices):
+    """
+    Calculate realized volatility from a price series.
+    Returns value rounded to 3 decimal places.
+    """
     returns = np.log(prices / prices.shift(1)).dropna()
-    return returns.std()
+    return round(returns.std(), 3)
 
 
 def load_data(filepath):
@@ -54,7 +58,7 @@ def historical_volatility(prices: pd.Series, periods_per_year: int = 252):
     variance = calculate_variance(squared_diffs)
     volatility = calculate_volatility(variance)
     annualized_vol = annualize_volatility(volatility, periods_per_year)
-    return volatility, annualized_vol
+    return round(volatility, 3), round(annualized_vol, 3)
 
 
 def volatility_ratio(vol1, vol2=100.0):
@@ -70,4 +74,4 @@ def volatility_ratio(vol1, vol2=100.0):
     """
     if vol2 == 0:
         return float('nan')
-    return (vol1 / vol2) * 100
+    return round((vol1 / vol2) * 100, 3)
