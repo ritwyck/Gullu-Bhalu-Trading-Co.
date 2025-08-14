@@ -30,14 +30,14 @@ def single_stock_view():
     plot_stock_metric(df, metric, window if metric == "Volatility" else None)
 
     # Volatility table for fixed periods
-    fixed_periods = [5, 10, 15, 30, 60]
+    fixed_periods = [5, 10, 15, 30, 60, 100]
     vol_data = []
     for p in fixed_periods:
         if p <= len(df):
             _, annual_vol = historical_volatility(df.tail(p)["Close"])
             vol_data.append({
                 "Period": p,
-                "Historical Volatility": annual_vol * 100  # consistent column name
+                "Historical Volatility": annual_vol  # decimal value
             })
 
     # Add custom period volatility
@@ -47,7 +47,7 @@ def single_stock_view():
     _, custom_vol = historical_volatility(df.tail(custom_period)["Close"])
     vol_data.append({
         "Period": custom_period,
-        "Historical Volatility": custom_vol * 100  # same column name as above
+        "Historical Volatility": custom_vol  # decimal value
     })
 
     # Create volatility DataFrame, sort by period
@@ -65,9 +65,7 @@ def single_stock_view():
     # Add ratio column (ratio of each period to chosen reference period)
     if ref_vol != 0:
         ratio_col_name = f"Ratio vs {ratio_ref_period}-day Historical Volatility"
-        vol_table_df[ratio_col_name] = (
-            vol_table_df["Historical Volatility"] / (ref_vol * 100)
-        ) * 100
+        vol_table_df[ratio_col_name] = vol_table_df["Historical Volatility"] / ref_vol
     else:
         ratio_col_name = f"Ratio vs {ratio_ref_period}-day Historical Volatility"
         vol_table_df[ratio_col_name] = pd.NA

@@ -104,7 +104,7 @@ nifty_100_symbols = [
     "ZYDUSLIFE"
 ]
 
-os.makedirs("HistoricalData", exist_ok=True)
+os.makedirs("Vault/Historical_Stock_Data", exist_ok=True)
 
 for symbol in nifty_100_symbols:
     try:
@@ -113,10 +113,10 @@ for symbol in nifty_100_symbols:
         info = ticker.info
         company_name = info.get('longName', 'UnknownCompany').replace(" ", "_")
 
-        hist = ticker.history(period='24mo')
+        hist = ticker.history(period='6mo')
         df = hist[['Open', 'High', 'Low', 'Close', 'Volume']].reset_index()
 
-        filename = f"HistoricalData/{symbol}.csv"
+        filename = f"Vault/Historical_Stock_Data/{symbol}.csv"
         df.to_csv(filename, index=False)
 
         print(f"Saved {filename}")
