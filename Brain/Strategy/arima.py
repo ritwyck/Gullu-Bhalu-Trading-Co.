@@ -1,133 +1,131 @@
-# arima.py
-
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.stattools import adfuller, acf, pacf
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib.pyplot as plt
+from pmdarima import auto_arima
+import yfinance as yf
 
 
 class ARIMAModel:
-    def __init__(self, p=1, d=0, q=1):
+    def __init__(self, p=None, d=None, q=None):
         """
-        Initialize the ARIMA model with parameters (p,d,q).
-        p: number of autoregressive terms
-        d: degree of differencing to achieve stationarity
-        q: number of moving average terms
+        Optionally set manual ARIMA order (p,d,q)
         """
         self.p = p
         self.d = d
         self.q = q
         self.model_fit = None
-        self.fitted_values = None
-        self.residuals = None
-
-    def difference(self, series):
-        """
-        Difference the series d times to achieve stationarity.
-        """
-        differenced = series.copy()
-        for _ in range(self.d):
-            differenced = differenced.diff().dropna()
-        return differenced
+        self.auto_model_fit = None
 
     def check_stationarity(self, series, significance=0.05):
-        """
-        Perform Augmented Dickey-Fuller test to check stationarity.
-        Returns True if series is stationary, False otherwise.
-        """
         result = adfuller(series.dropna())
         pvalue = result[1]
-        print(f"ADF Test p-value: {pvalue}")
+        print(f"ADF Test p-value: {pvalue:.5f}")
         return pvalue < significance
 
-    def fit(self, series):
+    def fit_manual(self, series):
         """
-        Fit the ARIMA model on the given time series data (pandas Series).
+        Fit manual ARIMA(p,d,q) model.
         """
-        # Differencing if needed
-        if self.d > 0:
-            series_to_fit = self.difference(series)
-        else:
-            series_to_fit = series
-
-        # Fit ARIMA model
+        if self.p is None or self.d is None or self.q is None:
+            raise ValueError("Manual ARIMA order (p,d,q) must be specified.")
         model = ARIMA(series, order=(self.p, self.d, self.q))
         self.model_fit = model.fit()
-
-        self.fitted_values = self.model_fit.fittedvalues
-        self.residuals = self.model_fit.resid
-
         print(self.model_fit.summary())
         return self.model_fit
 
-    def check_residuals_autocorrelation(self, lags=20):
+    def fit_auto(self, series, seasonal=False, m=1, max_p=5, max_q=5, max_d=2):
         """
-        Check autocorrelation of residuals.
-        Plot ACF and PACF of residuals.
+        Auto-ARIMA model selection using pmdarima.
         """
-        if self.residuals is None:
-            raise ValueError(
-                "Fit the model before checking residual autocorrelation.")
-        acf_vals = acf(self.residuals, nlags=lags)
-        pacf_vals = pacf(self.residuals, nlags=lags)
+        model_auto = auto_arima(
+            series,
+            start_p=0, start_q=0,
+            max_p=max_p, max_q=max_q, max_d=max_d,
+            seasonal=seasonal, m=m,
+            trace=True, error_action='ignore', suppress_warnings=True, stepwise=True
+        )
+        self.auto_model_fit = model_auto
+        print(f"Auto-selected order: {model_auto.order}")
+        return model_auto
 
-        plt.figure(figsize=(12, 5))
-        plt.subplot(121)
-        plt.stem(range(lags+1), acf_vals, use_line_collection=True)
-        plt.title("Residuals ACF")
+    def forecast(self, steps=10, use_auto=False):
+        """
+        Forecast next 'steps' with chosen model.
+        """
+        if use_auto and self.auto_model_fit is not None:
+            forecast = self.auto_model_fit.predict(
+                n_periods=steps, return_conf_int=True)
+            forecast_vals, conf_int = forecast
+            return pd.Series(forecast_vals), pd.DataFrame(conf_int)
+        elif self.model_fit is not None:
+            result = self.model_fit.get_forecast(steps=steps)
+            forecast_vals = result.predicted_mean
+            conf_int = result.conf_int()
+            return forecast_vals, conf_int
+        else:
+            raise ValueError("No fitted model available.")
 
-        plt.subplot(122)
-        plt.stem(range(lags+1), pacf_vals, use_line_collection=True)
-        plt.title("Residuals PACF")
+    def backtest(self, series, order=None, use_auto=False, test_size=0.2):
+        """
+        Backtest model on holdout (last test_size fraction).
+        Returns metrics: MAE, RMSE, and plots predicted vs ground truth.
+        """
+        n = len(series)
+        test_n = int(n * test_size)
+        train, test = series[:-test_n], series[-test_n:]
 
+        if use_auto:
+            model_auto = self.fit_auto(train)
+            preds = model_auto.predict(n_periods=len(test))
+        else:
+            if order:
+                self.p, self.d, self.q = order
+            self.fit_manual(train)
+            result = self.model_fit.get_forecast(steps=len(test))
+            preds = result.predicted_mean
+
+        # Metrics
+        mae = mean_absolute_error(test, preds)
+        rmse = np.sqrt(mean_squared_error(test, preds))
+        print(f"MAE: {mae:.4f} | RMSE: {rmse:.4f}")
+
+        # Plot
+        plt.figure(figsize=(10, 5))
+        plt.plot(test.index, test, label='Actual')
+        plt.plot(test.index, preds, label='Predicted', color='red')
+        plt.title("Backtest: Forecast vs Actual")
+        plt.legend()
         plt.show()
 
-    def forecast(self, steps=10):
-        """
-        Forecast future values for given number of steps.
-        Returns forecasted values as a pandas Series.
-        """
-        if self.model_fit is None:
-            raise ValueError("Fit the model before forecasting.")
-        forecast_result = self.model_fit.get_forecast(steps=steps)
-        forecast_series = forecast_result.predicted_mean
-        conf_int = forecast_result.conf_int()
-        return forecast_series, conf_int
+        return {'mae': mae, 'rmse': rmse, 'preds': preds}
 
 
 if __name__ == "__main__":
-    # Example usage
-    import yfinance as yf
 
-    # Download historical stock data for demonstration (e.g. Apple)
     data = yf.download("AAPL", start="2020-01-01", end="2023-01-01")
-    close_prices = data['Close']
+    series = data['Close'].dropna()
 
-    # Instantiate ARIMA model example: ARIMA(1,1,1)
-    arima_model = ARIMAModel(p=1, d=1, q=1)
+    arima_manual = ARIMAModel(p=1, d=1, q=1)
+    print('\nChecking stationarity:')
+    print(arima_manual.check_stationarity(series))
 
-    # Check stationarity
-    stationary = arima_model.check_stationarity(close_prices)
-    print(f"Series stationary? {stationary}")
-
-    # Fit model
-    arima_model.fit(close_prices)
-
-    # Check residual autocorrelation
-    arima_model.check_residuals_autocorrelation()
-
-    # Forecast next 10 steps
-    forecast, conf_int = arima_model.forecast(10)
-    print("Forecasted prices:")
+    print('\nManual ARIMA:')
+    arima_manual.fit_manual(series)
+    forecast, conf = arima_manual.forecast(10)
+    print("\nManual Forecast:")
     print(forecast)
 
-    # Plot forecast with confidence intervals
-    import matplotlib.pyplot as plt
-    plt.figure(figsize=(10, 5))
-    plt.plot(close_prices.index, close_prices, label='Historical')
-    plt.plot(forecast.index, forecast, label='Forecast', color='red')
-    plt.fill_between(
-        forecast.index, conf_int.iloc[:, 0], conf_int.iloc[:, 1], color='pink', alpha=0.3)
-    plt.legend()
-    plt.show()
+    print('\nAuto-ARIMA:')
+    arima_auto = ARIMAModel()
+    arima_auto.fit_auto(series)
+    forecast_auto, conf_auto = arima_auto.forecast(10, use_auto=True)
+    print("\nAuto-ARIMA Forecast:")
+    print(forecast_auto)
+
+    print('\nManual ARIMA Backtest:')
+    arima_manual.backtest(series, order=(1, 1, 1), use_auto=False)
+    print('\nAuto-ARIMA Backtest:')
+    arima_auto.backtest(series, use_auto=True)
