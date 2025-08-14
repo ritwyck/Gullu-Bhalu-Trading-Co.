@@ -20,7 +20,7 @@ The app requires the following Python packages:
 - **numpy**: For numerical calculations.
 - **altair**: For interactive plotting charts.
 - **Brain** (local module): Provides volatility calculation utilities such as `load_data`, `historical_volatility`, `realized_volatility`.
-- **FrontEnd** (local module): Contains UI components including `singleStockView` and `multiStockView` with main view functions.
+- **Beauty** (local module): Contains UI components including `singleStockView` and `multiStockView` with main view functions.
 
 ---
 
@@ -32,7 +32,7 @@ Assuming you have **Python 3.7+** installed, you can install the dependencies vi
 pip install streamlit pandas numpy altair
 ```
 
-For the **Brain** and **FrontEnd** modules, ensure they are in your Python path or installed in your environment if they are custom packages. They should include the necessary volatility calculation functions and UI view components.
+For the **Brain** and **Beauty** modules, ensure they are in your Python path or installed in your environment if they are custom packages. They should include the necessary volatility calculation functions and UI view components.
 
 ---
 
@@ -46,7 +46,7 @@ your-project/
 ├── Vault/
 │   └── Historical_Stock_Data/         # Your CSV stock price data files here
 │
-├── FrontEnd/
+├── Beauty/
 │   ├── singleStockView.py             # Contains single_stock_view()
 │   └── multiStockView.py              # Contains compare_stocks_view()
 │
@@ -79,10 +79,10 @@ All volatility data is based on historical price data CSV files stored in the `V
 
 - **Dependencies**: Install via pip — `streamlit`, `pandas`, `numpy`, `altair`.
 - **Data**: Place historical stock CSV files into `Vault/Historical_Stock_Data`.
-- **Modules**: Make sure `Brain` and `FrontEnd` are accessible Python packages or modules.
+- **Modules**: Make sure `Brain` and `Beauty` are accessible Python packages or modules.
 - **Run**: Launch the app using `streamlit run Launcher.py`.
 - **Use**: Interactively explore volatility measures by selecting stock(s), periods, and metrics.
 
 ---
 
-Please reach out if you need guidance on setting up the `Brain` or `FrontEnd` modules, or help with adding new features or deployments!
+Please reach out if you need guidance on setting up the `Brain` or `Beauty` modules, or help with adding new features or deployments!
