@@ -55,15 +55,13 @@ def all_stocks_view():
 
     final_df = pd.DataFrame(all_rows)
 
-    # === Sort columns: Symbol, all Volatilities, spacer, all Ratios
     cols = list(final_df.columns)
     vol_cols = [col for col in cols if col.startswith("Volatility_")]
     ratio_cols = [col for col in cols if col.startswith("Ratio_")]
-    # Custom: add a spacer column for visual separation
+
     barrier_col = "-----"
     final_df[barrier_col] = ""  # empty column as barrier
 
-    # Define new column order
     ordered_cols = ["Symbol"] + vol_cols + [barrier_col] + ratio_cols
     final_df = final_df[ordered_cols]
 

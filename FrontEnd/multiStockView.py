@@ -1,29 +1,30 @@
 import os
 import pandas as pd
 import streamlit as st
-from Brain.Strategy.volatility import load_data, realized_volatility, historical_volatility
+from Brain.Strategy.volatility import load_data, historical_volatility
 import altair as alt
 
 
 def compare_stocks_view():
     st.header("Multiple Stock Volatility Comparison")
 
+    # === Load available symbols ===
     files = [f for f in os.listdir(
         "Vault/Historical_Stock_Data") if f.endswith(".csv")]
     symbols = [os.path.splitext(f)[0] for f in files]
 
-    # Select 2 to 5 stocks
+    # === Let user select 2–5 stock symbols ===
     selected_symbols = st.multiselect(
-        "Select 2 to 5 stocks to compare", symbols, default=symbols[:2]
+        "Select 2 to 10 stocks to compare", symbols, default=symbols[:2]
     )
     if len(selected_symbols) < 2:
         st.warning("Please select at least 2 stocks to compare.")
         return
-    if len(selected_symbols) > 5:
-        st.warning("Select up to 5 stocks only.")
+    if len(selected_symbols) > 10:
+        st.warning("Select up to 10 stocks only.")
         return
 
-    # --- Metric plotting controls ---
+    # === Metric plotting controls ===
     metric = st.radio(
         "Select metric", ["Open", "High", "Low", "Close", "Volatility"], key="compare_metric"
     )
@@ -31,13 +32,11 @@ def compare_stocks_view():
     if metric == "Volatility":
         window = st.number_input(
             "Volatility rolling window",
-            min_value=2,
-            max_value=100,
-            value=10,
+            min_value=2, max_value=100, value=10,
             key="compare_vol_window",
         )
 
-    # Plotting
+    # === Plot selected metric for all selected stocks ===
     dfs_plot = []
     for sym in selected_symbols:
         file_match = [f for f in files if f.startswith(sym)][0]
@@ -52,7 +51,6 @@ def compare_stocks_view():
         dfs_plot.append(df_plot)
 
     combined_df_plot = pd.concat(dfs_plot)
-
     chart = (
         alt.Chart(combined_df_plot)
         .mark_line()
@@ -66,85 +64,67 @@ def compare_stocks_view():
     )
     st.altair_chart(chart, use_container_width=True)
 
-    # === Historical Vol Table ===
+    # === Volatility table inputs ===
     custom_period = st.number_input(
         "Select Volatility period in days",
-        min_value=2,
-        max_value=365,
-        value=10,
+        min_value=2, max_value=365, value=10,
         key="compare_custom_vol_period",
     )
+    ratio_ref_period = st.number_input(
+        "Select Ratio period in days",
+        min_value=2, max_value=365, value=5,
+        step=1,
+        key="compare_ratio_ref_period",
+    )
 
-    fixed_periods = [5, 10, 15, 30, 60, 100]
-    all_vol_data = []
+    fixed_periods = [5, 10, 30, 100]
+    all_rows = []
 
+    # === Build wide-format table: 1 row per stock ===
     for sym in selected_symbols:
         file_match = [f for f in files if f.startswith(sym)][0]
         df = load_data(os.path.join("Vault/Historical_Stock_Data", file_match))
 
+        # Periods to calculate
         periods = fixed_periods.copy()
         if custom_period not in periods:
             periods.append(custom_period)
         periods = sorted(periods)
 
-        for p in periods:
-            if p <= len(df):
-                _, annual_vol = historical_volatility(df.tail(p)["Close"])
-                all_vol_data.append({
-                    "Symbol": sym,
-                    "Period": p,
-                    # Store as decimal, not percentage
-                    "Historical Volatility": annual_vol
-                })
+        row_data = {"Symbol": sym}
 
-    combined_vol_df = pd.DataFrame(all_vol_data)
-
-    hist_vol_pivot = combined_vol_df.pivot_table(
-        index="Period", columns="Symbol", values="Historical Volatility"
-    ).sort_index()
-
-    st.subheader("Historical Volatility (Decimal)")
-    st.dataframe(hist_vol_pivot)
-
-    # === Ratio Table ===
-    ratio_ref_period = st.number_input(
-        "Select Ratio period in days",
-        min_value=2,
-        max_value=365,
-        value=5,
-        step=1,
-        key="compare_ratio_ref_period",
-    )
-
-    ratio_vol_data = []
-
-    for sym in selected_symbols:
-        file_match = [f for f in files if f.startswith(sym)][0]
-        df = load_data(os.path.join("Vault/Historical_Stock_Data", file_match))
+        # Reference volatility for ratios
         if ratio_ref_period <= len(df):
             _, ref_vol = historical_volatility(
                 df.tail(ratio_ref_period)["Close"])
         else:
             ref_vol = None
 
-        stock_df = combined_vol_df[combined_vol_df["Symbol"] == sym].copy()
+        # Fill row with all vols then ratios
+        for p in periods:
+            if p <= len(df):
+                _, annual_vol = historical_volatility(df.tail(p)["Close"])
+                row_data[f"Volatility_{p}d"] = annual_vol
+        for p in periods:
+            if p <= len(df):
+                _, annual_vol = historical_volatility(df.tail(p)["Close"])
+                row_data[f"Ratio_{p}d"] = (
+                    annual_vol / ref_vol) if (ref_vol and ref_vol != 0) else pd.NA
 
-        if ref_vol and ref_vol != 0:
-            stock_df[f"Ratio vs {ratio_ref_period}-day"] = (
-                stock_df["Historical Volatility"] / ref_vol
-            )
-        else:
-            stock_df[f"Ratio vs {ratio_ref_period}-day"] = pd.NA
+        all_rows.append(row_data)
 
-        ratio_vol_data.append(stock_df)
+    final_df = pd.DataFrame(all_rows)
 
-    combined_ratio_df = pd.concat(ratio_vol_data)
+    # === Column ordering: Symbol, all vols, spacer, all ratios ===
+    cols = list(final_df.columns)
+    vol_cols = [c for c in cols if c.startswith("Volatility_")]
+    ratio_cols = [c for c in cols if c.startswith("Ratio_")]
 
-    ratio_col_name = f"Ratio vs {ratio_ref_period}-day"
-    ratio_pivot = combined_ratio_df.pivot_table(
-        index="Period", columns="Symbol", values=ratio_col_name
-    ).sort_index()
+    barrier_col = "-----"  # visual barrier column
+    final_df[barrier_col] = ""
 
-    st.subheader(
-        f"Volatility Ratios Relative to {ratio_ref_period}-day (Decimal)")
-    st.dataframe(ratio_pivot)
+    ordered_cols = ["Symbol"] + vol_cols + [barrier_col] + ratio_cols
+    final_df = final_df[ordered_cols]
+
+    st.subheader("Volatility & Ratios")
+    st.dataframe(final_df)
