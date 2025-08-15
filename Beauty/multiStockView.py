@@ -26,7 +26,7 @@ def compare_stocks_view():
 
     # === Metric plotting controls ===
     metric = st.radio(
-        "Select metric", ["Open", "High", "Low", "Close", "Volatility"], key="compare_metric"
+        "Select metric to Plot", ["Open", "High", "Low", "Close", "Volatility"], key="compare_metric"
     )
     window = 10
     if metric == "Volatility":

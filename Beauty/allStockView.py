@@ -2,10 +2,11 @@ import os
 import pandas as pd
 import streamlit as st
 from Brain.Strategy.volatility import load_data, historical_volatility
+from Brain.Strategy.adx import calculate_adx
 
 
 def all_stocks_view():
-    st.header("All Stock Volatility and Ratio Comparison")
+    st.header("All Stock Volatility, Ratios & ADX Comparison")
 
     files = [f for f in os.listdir(
         "Vault/Historical_Stock_Data") if f.endswith(".csv")]
@@ -24,18 +25,19 @@ def all_stocks_view():
     )
 
     fixed_periods = [5, 10, 30, 100]
-    all_rows = []
+    vol_rows = []
+    adx_rows = []
 
     for sym in selected_symbols:
         file_match = [f for f in files if f.startswith(sym)][0]
         df = load_data(os.path.join("Vault/Historical_Stock_Data", file_match))
+
         periods = fixed_periods.copy()
         if custom_period not in periods:
             periods.append(custom_period)
         periods = sorted(periods)
 
-        row_data = {"Symbol": sym}
-
+        row_data_vol = {"Symbol": sym}
         if ratio_ref_period <= len(df):
             _, ref_vol = historical_volatility(
                 df.tail(ratio_ref_period)["Close"])
@@ -45,24 +47,17 @@ def all_stocks_view():
         for p in periods:
             if p <= len(df):
                 _, annual_vol = historical_volatility(df.tail(p)["Close"])
-                row_data[f"Volatility_{p}d"] = annual_vol
+                row_data_vol[f"Volatility_{p}d"] = annual_vol
                 if ref_vol and ref_vol != 0:
-                    row_data[f"Ratio_{p}d"] = annual_vol / ref_vol
+                    row_data_vol[f"Ratio_{p}d"] = annual_vol / ref_vol
                 else:
-                    row_data[f"Ratio_{p}d"] = pd.NA
+                    row_data_vol[f"Ratio_{p}d"] = pd.NA
 
-        all_rows.append(row_data)
+        vol_rows.append(row_data_vol)
 
-    final_df = pd.DataFrame(all_rows)
+    # --- VOLATILITY TABLE ---
+    vol_df = pd.DataFrame(vol_rows)
+    vol_df = vol_df.round(3)
 
-    cols = list(final_df.columns)
-    vol_cols = [col for col in cols if col.startswith("Volatility_")]
-    ratio_cols = [col for col in cols if col.startswith("Ratio_")]
-
-    barrier_col = "-----"
-    final_df[barrier_col] = ""  # empty column as barrier
-
-    ordered_cols = ["Symbol"] + vol_cols + [barrier_col] + ratio_cols
-    final_df = final_df[ordered_cols]
-
-    st.dataframe(final_df)
+    st.subheader("Volatility & Ratios Table")
+    st.dataframe(vol_df)

@@ -45,9 +45,9 @@ def calculate_volatility(variance: float) -> float:
     return np.sqrt(variance)
 
 
-def annualize_volatility(volatility: float, periods_per_year: int = 252) -> float:
-    """Step 6: Convert volatility to annualized volatility."""
-    return volatility * np.sqrt(periods_per_year)
+# def annualize_volatility(volatility: float, periods_per_year: int = 252) -> float:
+ #   """Step 6: Convert volatility to annualized volatility."""
+  #  return volatility * np.sqrt(periods_per_year)
 
 
 def historical_volatility(prices: pd.Series, periods_per_year: int = 252):
@@ -57,8 +57,8 @@ def historical_volatility(prices: pd.Series, periods_per_year: int = 252):
     squared_diffs = calculate_squared_diffs(log_returns, mean_return)
     variance = calculate_variance(squared_diffs)
     volatility = calculate_volatility(variance)
-    annualized_vol = annualize_volatility(volatility, periods_per_year)
-    return round(volatility, 3), round(annualized_vol, 3)
+   # annualized_vol = annualize_volatility(volatility, periods_per_year)
+    return round(volatility)
 
 
 def volatility_ratio(vol1, vol2=100.0):
@@ -74,4 +74,4 @@ def volatility_ratio(vol1, vol2=100.0):
     """
     if vol2 == 0:
         return float('nan')
-    return round((vol1 / vol2) * 100, 3)
+    return f"{(vol1 / vol2) * 100:.3f}"
