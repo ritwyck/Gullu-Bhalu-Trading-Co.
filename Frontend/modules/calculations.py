@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
-from Brain.Strategy.volatility import historical_volatility
-from Brain.Strategy.adx import calculate_adx
-from Beauty.modules.data_loading import load_symbol_data
+from Backend.Strategy.volatility import historical_volatility
+from Backend.Strategy.adx import calculate_adx
+from Frontend.modules.data_loading import load_symbol_data
 
 
 def compute_volatility_and_ratios(df, fixed_periods, ratio_ref_period):

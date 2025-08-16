@@ -2,12 +2,12 @@ import os
 import streamlit as st
 import altair as alt
 import pandas as pd
-from Beauty.modules.data_loading import load_symbol_data
+from Frontend.modules.data_loading import load_symbol_data
 
-from Beauty.modules.data_loading import get_stock_files, get_symbols
-from Beauty.modules.ui_controls import select_symbols, get_metric_and_window, get_period_inputs
-from Beauty.modules.calculations import compute_multiple_volatility_ratios
-from Beauty.modules.plot import plot_stock_metric
+from Frontend.modules.data_loading import get_stock_files, get_symbols
+from Frontend.modules.ui_controls import select_symbols, get_metric_and_window, get_period_inputs
+from Frontend.modules.calculations import compute_multiple_volatility_ratios
+from Frontend.modules.plot import plot_stock_metric
 
 
 def compare_stocks_view(selected_symbols=None):

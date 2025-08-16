@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from Beauty.modules.plot import plot_stock_metric
+from Frontend.modules.plot import plot_stock_metric
 
-from Beauty.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
-from Beauty.modules.ui_controls import select_symbol, get_metric_and_window, get_period_inputs
-from Beauty.modules.calculations import compute_volatility_and_ratios, compute_adx_table
+from Frontend.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
+from Frontend.modules.ui_controls import select_symbol, get_metric_and_window, get_period_inputs
+from Frontend.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 
 
 def single_stock_view():

@@ -1,7 +1,7 @@
 import streamlit as st
-from Beauty.main.singleStockView import single_stock_view
-from Beauty.main.multiStockView import compare_stocks_view
-from Beauty.main.allStockView import all_stocks_view
+from Frontend.main.singleStockView import single_stock_view
+from Frontend.main.multiStockView import compare_stocks_view
+from Frontend.main.allStockView import all_stocks_view
 
 st.title("📊 Stock Volatility Dashboard")
 
