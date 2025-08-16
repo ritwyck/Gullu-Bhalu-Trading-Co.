@@ -2,12 +2,9 @@ import os
 import streamlit as st
 import altair as alt
 import pandas as pd
-from Frontend.modules.data_loading import load_symbol_data
-
-from Frontend.modules.data_loading import get_stock_files, get_symbols
-from Frontend.modules.ui_controls import select_symbols, get_metric_and_window, get_period_inputs
+from Frontend.modules.data_loading import load_symbol_data, get_stock_files, get_symbols
+from Frontend.modules.ui_controls import get_metric_and_window, get_period_inputs
 from Frontend.modules.calculations import compute_multiple_volatility_ratios
-from Frontend.modules.plot import plot_stock_metric
 
 
 def compare_stocks_view(selected_symbols=None):
@@ -15,13 +12,23 @@ def compare_stocks_view(selected_symbols=None):
 
     data_folder = "Vault/Historical_Stock_Data"
     files = get_stock_files(data_folder)
-    all_symbols = [os.path.splitext(f)[0] for f in files]
+    all_symbols = get_symbols(files)
 
-    # Provide default selected_symbols (first 2 symbols) if None or <2 selected
-    if selected_symbols is None or len(selected_symbols) < 2:
-        selected_symbols = all_symbols[:2]
+    # Use query params for initial selection if available
+    params = st.query_params
+    if selected_symbols is None:
+        # Read from query params if present, else default
+        if "symbols" in params:
+            param_syms = params["symbols"]
+            # params["symbols"] may be a comma-separated string or list
+            if isinstance(param_syms, list):
+                selected_symbols = param_syms[0].split(",")
+            else:
+                selected_symbols = param_syms.split(",")
+        else:
+            selected_symbols = all_symbols[:2]
 
-    # Allow user to update stock selection via multiselect
+    # Let user update selection via multiselect
     selected_symbols = st.multiselect(
         "Select 2 to 10 stocks to compare",
         all_symbols,
@@ -29,7 +36,10 @@ def compare_stocks_view(selected_symbols=None):
         help="Select at least 2 and up to 10 stocks"
     )
 
-    # Validate selected_symbols length
+    # Update query params on selection change
+    st.query_params["symbols"] = ",".join(selected_symbols)
+
+    # Validate selection
     if len(selected_symbols) < 2:
         st.warning("Please select at least 2 stocks to compare.")
         return
@@ -44,7 +54,7 @@ def compare_stocks_view(selected_symbols=None):
     # Build combined dataframe for plotting
     dfs_plot = []
     for sym in selected_symbols:
-        df = load_symbol_data(data_folder, sym, files)  # sym is a string!
+        df = load_symbol_data(data_folder, sym, files)
         if df is None:
             st.warning(f"No data found for symbol '{sym}'. Skipping.")
             continue
@@ -65,6 +75,7 @@ def compare_stocks_view(selected_symbols=None):
 
     combined_df_plot = pd.concat(dfs_plot)
 
+    # Plot with Altair
     chart = (
         alt.Chart(combined_df_plot)
         .mark_line()
@@ -76,10 +87,9 @@ def compare_stocks_view(selected_symbols=None):
         )
         .properties(width=700, height=400, title=f"{metric} Comparison over Time")
     )
-
     st.altair_chart(chart, use_container_width=True)
 
-    # Get length of first selected symbol's data for period inputs
+    # Get inputs for tables, using length of the first selected symbol's data
     df_first = load_symbol_data(data_folder, selected_symbols[0], files)
     custom_period, ratio_ref_period = get_period_inputs(len(df_first))
 
@@ -88,10 +98,14 @@ def compare_stocks_view(selected_symbols=None):
     )
 
     # Convert symbols to clickable Markdown links
-    base_single_stock_url = "/SingleStockView?symbol="
+    base_single_stock_url = "/Stocks?symbol="
     final_df["Symbol"] = final_df["Symbol"].apply(
         lambda sym: f"[{sym}]({base_single_stock_url}{sym})"
     )
 
     st.subheader("Volatility & Ratios")
     st.markdown(final_df.to_markdown(index=False), unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    compare_stocks_view()
