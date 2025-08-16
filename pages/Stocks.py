@@ -4,6 +4,13 @@ from Frontend.modules.plot import plot_stock_metric
 from Frontend.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
 from Frontend.modules.ui_controls import get_metric_and_window, get_period_inputs
 from Frontend.modules.calculations import compute_volatility_and_ratios, compute_adx_table
+from Frontend.modules.sidebar import custom_sidebar, hide_default_nav
+from Frontend.modules.page_config import set_page_config
+
+set_page_config()
+
+hide_default_nav()  # Hide the default multipage nav
+selected_page = custom_sidebar()
 
 
 def single_stock_view():
@@ -13,12 +20,19 @@ def single_stock_view():
     files = get_stock_files(data_folder)
     symbols = get_symbols(files)
 
-    # Use st.query_params exclusively for GET/SET
+    # Robust way to extract default symbol from query params
     params = st.query_params
-    default_symbol = params.get(
-        "symbol", [symbols]) if "symbol" in params else symbols
-    symbol = st.selectbox("Select stock symbol", symbols, index=symbols.index(
-        default_symbol) if default_symbol in symbols else 0)
+    # If param exists, use it; else first symbol.
+    default_symbol = params.get("symbol", symbols[0])
+    # If the param is passed as a list like ['TATASTEEL']
+    if isinstance(default_symbol, list):
+        default_symbol = default_symbol
+
+    symbol = st.selectbox(
+        "Select stock symbol",
+        symbols,
+        index=symbols.index(default_symbol) if default_symbol in symbols else 0
+    )
 
     # Update URL when user changes selection
     st.query_params["symbol"] = symbol
@@ -29,7 +43,8 @@ def single_stock_view():
         return
 
     metric, window = get_metric_and_window(
-        ["Open", "High", "Low", "Close", "Volatility"], "single_metric")
+        ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
+    )
     plot_stock_metric(df, metric, window if metric == "Volatility" else None)
 
     fixed_periods, ratio_ref_period = get_period_inputs(len(df))
