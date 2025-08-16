@@ -220,7 +220,7 @@ def single_stock_view():
     st.subheader(f"{symbol} - Volatility & Ratio Table")
     st.dataframe(pd.DataFrame(vol_rows))
 
-    st.subheader(f"{symbol} - ADX Table (TradingView/Yahoo Style)")
+    st.subheader(f"{symbol} - ADX Table")
     st.dataframe(pd.DataFrame(adx_rows))
 
 
