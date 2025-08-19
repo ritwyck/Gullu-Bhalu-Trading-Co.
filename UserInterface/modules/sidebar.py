@@ -10,12 +10,12 @@ def custom_sidebar():
 
     for page in pages:
         url = f"/?page={page}"
-    if page == current_page:
-        st.sidebar.markdown(
-            f"- <strong>{page}</strong>", unsafe_allow_html=True)
-    else:
-        st.sidebar.markdown(
-            f'- <a href="{url}">{page}</a>', unsafe_allow_html=True)
+        if page == current_page:
+            st.sidebar.markdown(
+                f"- <span style='color:#04B4D9;font-weight:bold'>{page}</span>", unsafe_allow_html=True)
+        else:
+            st.sidebar.markdown(
+                f"- <a href='{url}'>{page}</a>", unsafe_allow_html=True)
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("*Powered by Trade Jockey*")
