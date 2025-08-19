@@ -17,8 +17,11 @@ def custom_sidebar():
                 unsafe_allow_html=True
             )
         else:
-            # native navigation – reloads same tab
-            st.sidebar.page_link(url, label=page)
+            # force reload in same tab
+            st.sidebar.markdown(
+                f"- <a href='{url}' target='_self'>{page}</a>",
+                unsafe_allow_html=True
+            )
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("*Powered by Trade Jockey*")
@@ -31,6 +34,3 @@ def hide_default_nav():
             [data-testid="stSidebarNav"] {display: none;}
         </style>
     """, unsafe_allow_html=True)
-
-
-# ----
