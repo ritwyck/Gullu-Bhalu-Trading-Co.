@@ -2,24 +2,8 @@ import streamlit as st
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-
-FINNHUB_KEY = "d2i2vppr01qucbnmsn7gd2i2vppr01qucbnmsn80"
-
-
-def get_symbols(query):
-    url = f"https://finnhub.io/api/v1/search?q={query}&token={FINNHUB_KEY}"
-    data = requests.get(url).json()
-    matches = data.get("result", [])[:5]
-    return [(m.get("symbol", ""), m.get("description", "")) for m in matches]
-
-
-def fetch_historical_data(symbol):
-    end_date = datetime.today()
-    start_date = end_date - timedelta(days=7)
-    ticker = yf.Ticker(symbol)
-    hist = ticker.history(start=start_date.strftime(
-        '%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
-    return hist
+from Frontend.modules.symbol_search import get_symbols
+from Frontend.modules.data_acquisition import fetch_historical_data
 
 
 def render_backdrop():
