@@ -4,6 +4,7 @@ import streamlit as st
 def custom_sidebar():
     st.sidebar.image("trade-jockey.png", width=120)
     st.sidebar.markdown("## Navigation")
+
     pages = ["Home", "All-Stocks", "Compare-Stocks", "Stocks"]
     params = st.query_params
     current_page = params.get("page", "Home")
@@ -12,10 +13,12 @@ def custom_sidebar():
         url = f"/?page={page}"
         if page == current_page:
             st.sidebar.markdown(
-                f"- <span style='color:#04B4D9;font-weight:bold'>{page}</span>", unsafe_allow_html=True)
+                f"- <span style='color:#04B4D9;font-weight:bold'>{page}</span>",
+                unsafe_allow_html=True
+            )
         else:
-            st.sidebar.markdown(
-                f"- <a href='{url}'>{page}</a>", unsafe_allow_html=True)
+            # native navigation – reloads same tab
+            st.sidebar.page_link(url, label=page)
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("*Powered by Trade Jockey*")
@@ -28,3 +31,6 @@ def hide_default_nav():
             [data-testid="stSidebarNav"] {display: none;}
         </style>
     """, unsafe_allow_html=True)
+
+
+# ----
