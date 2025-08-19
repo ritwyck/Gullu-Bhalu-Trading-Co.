@@ -1,9 +1,9 @@
 from UserInterface.modules.page_config import set_page_config
 from UserInterface.modules.sidebar import custom_sidebar, hide_default_nav
-from Views.backdrop import render_backdrop
-from Views.all_stocks import render_all_stocks
-from Views.compare import render_compare_stocks
-from Views.single import render_single_stock
+from views.backdrop import render_backdrop
+from views.all_stocks import render_all_stocks
+from views.compare import render_compare_stocks
+from views.single import render_single_stock
 from Logic.Strategy.volatility import load_data, historical_volatility
 from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
