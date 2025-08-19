@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import yfinance as yf
 
 
 def fetch_historical_data(symbol):
