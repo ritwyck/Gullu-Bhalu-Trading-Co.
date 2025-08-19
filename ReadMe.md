@@ -1,88 +1,183 @@
-# Stock Volatility Dashboard
+<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
+
+# Trade Jockey: Advanced Stock Analytics Platform
 
 ## Overview
 
-This is a Streamlit-based Stock Volatility Dashboard app that lets you analyze stock volatilities in two modes:
+**Trade Jockey** is a comprehensive, modular analytics platform designed for both retail and professional traders. It leverages modern **streamlit-based web UI**, high-performance Python backends, and robust statistical tools to provide actionable insights into stock volatility, trend strength, and market predictions. The platform is engineered for rapid, customizable analysis of equities data using cutting-edge quantitative finance techniques.
 
-- **Single Stock**: View historical and realized volatilities for a selected stock over various periods and plot different stock metrics.
-- **Compare Multiple Stocks**: Select 2 to 5 stocks to compare their historical volatilities side-by-side, with customizable rolling window and ratio metrics.
+***
 
-Users can switch between modes using the app’s mode selector.
+## Key Features
 
----
+- **Interactive Dashboard:**
+    - Intuitive navigation and clean layout, optimized for both desktop and tablet devices.
+    - Sidebar-driven multi-page navigation: Home, All-Stocks, Compare-Stocks, Stocks.
+- **Multi-Symbol Analysis:**
+    - Compare metrics (volatility, ratios, ADX) across multiple stocks.
+    - Dynamic period selection for advanced comparative studies.
+- **Volatility Analytics:**
+    - Raw and annualized historical volatility calculations.
+    - Rolling window volatility visualization.
+    - Volatility ratio comparisons over custom and preset periods.
+- **Trend Strength Metrics:**
+    - Average Directional Index (ADX), +DI, -DI calculations mimic professional trading platforms.
+    - Slicing by custom and fixed periods.
+- **ARIMA-based Market Predictions:**
+    - Time-series forecasting module powered by Statsmodels and pmdarima.
+    - Automated model diagnostics: stationarity checks, backtesting, and error metrics.
+    - Out-of-the-box integration with Yahoo Finance for instant data retrieval.
+- **Fast Data Loading \& Preprocessing:**
+    - Automatic symbol and file detection.
+    - CSV ingestion with robust data cleaning.
 
-## Dependencies
+***
 
-The app requires the following Python packages:
+## File Structure
 
-- **streamlit**: For the interactive web app interface.
-- **pandas**: For data manipulation.
-- **numpy**: For numerical calculations.
-- **altair**: For interactive plotting charts.
-- **Brain** (local module): Provides volatility calculation utilities such as `load_data`, `historical_volatility`, `realized_volatility`.
-- **Beauty** (local module): Contains UI components including `singleStockView` and `multiStockView` with main view functions.
+```
+TradeJockey/
+│
+├── Frontend/
+│   └── modules/
+│       ├── page_config.py        # Streamlit page config
+│       ├── sidebar.py            # Custom sidebar and navigation control
+│       ├── plot.py               # Altair-powered chart plotting
+│       ├── data_loading.py       # Utility: symbol/file discovery and loading
+│       ├── calculations.py       # Core metric calculations: volatility, ratios, ADX
+│       ├── ui_controls.py        # User input management (widgets, form controls)
+│
+├── Backend/
+│   └── Strategy/
+│       ├── volatility.py         # Historical/realized volatility functions
+│       ├── adx.py                # ADX, +DI, -DI calculation logic
+│       ├── arima.py              # ARIMA prediction & backtesting module
+│       ├── __init__.py           # Strategy package loader
+│
+├── views/
+│   ├── home.py                   # Home page rendering
+│   ├── all_stocks.py             # Multi-stock analytics page
+│   ├── compare.py                # Symbol comparison logic
+│   ├── single.py                 # Single stock analytics view
+│
+├── market_prediction.ipynb       # End-to-end S&P 500 prediction notebook
+├── Home.py                       # Main Streamlit entrypoint
+```
 
----
+
+***
+
+## How It Works
+
+### 1. **Data Onboarding**
+
+- Drop your CSV files into the designated data folder.
+- Platform auto-detects available symbols and periods.
+
+
+### 2. **Custom Metric Visualization**
+
+- Quickly plot rolling volatility, trend strength, and other metrics with adjustable periods.
+
+
+### 3. **Comparative Analytics**
+
+- Select multiple stocks for side-by-side metric tables―ideal for portfolio risk assessment.
+
+
+### 4. **ARIMA Prediction Engine**
+
+- Configure manual or auto ARIMA models for price forecasting.
+- Backtest model accuracy directly in-app, visualize predictions vs. actuals.
+
+
+### 5. **Export-Ready Charts \& Tables**
+
+- All charts rendered via Altair for publication-ready outputs.
+- Data tables are easily exportable for further analysis.
+
+***
 
 ## Installation
 
-Assuming you have **Python 3.7+** installed, you can install the dependencies via pip:
+1. **Clone the repository:**
 
 ```bash
-pip install streamlit pandas numpy altair
+git clone https://github.com/YOUR-REPO/TradeJockey.git
+cd TradeJockey
 ```
 
-For the **Brain** and **Beauty** modules, ensure they are in your Python path or installed in your environment if they are custom packages. They should include the necessary volatility calculation functions and UI view components.
-
----
-
-## Running the App
-
-1. **Project Structure Sample**
-
-```
-your-project/
-│
-├── Vault/
-│   └── Historical_Stock_Data/         # Your CSV stock price data files here
-│
-├── Beauty/
-│   ├── singleStockView.py             # Contains single_stock_view()
-│   └── multiStockView.py              # Contains compare_stocks_view()
-│
-├── Brain/
-│   └── volatility.py                  # Contains load_data(), realized_volatility(), historical_volatility() etc.
-│
-└── Launcher.py                       # Main launcher file (Streamlit entry point)
-```
-
-2. **Run via the launcher script**
-
-From your terminal, inside the project folder, run:
+2. **Install Python requirements:**
 
 ```bash
-streamlit run Launcher.py
+pip install -r requirements.txt
 ```
 
-3. **Using the App**
+3. **Launch the Streamlit server:**
 
-- The app title will display "📊 Stock Volatility Dashboard".
-- Use the mode radio button at the top to switch between:
-  - **Single Stock**: Choose a stock symbol, view historical volatility data in a table with ratio columns, select metric and rolling window, and visualize.
-  - **Compare Multiple Stocks**: Select 2–5 stock symbols, specify volatility and ratio periods; compare volatility tables side-by-side for all selected stocks; visualize selected metrics comparatively.
+```bash
+streamlit run Home.py
+```
 
-All volatility data is based on historical price data CSV files stored in the `Vault/Historical_Stock_Data` folder.
+4. **Access the app in your browser at `localhost:8501`**
 
----
+***
 
-## Summary
+## Technologies Used
 
-- **Dependencies**: Install via pip — `streamlit`, `pandas`, `numpy`, `altair`.
-- **Data**: Place historical stock CSV files into `Vault/Historical_Stock_Data`.
-- **Modules**: Make sure `Brain` and `Beauty` are accessible Python packages or modules.
-- **Run**: Launch the app using `streamlit run Launcher.py`.
-- **Use**: Interactively explore volatility measures by selecting stock(s), periods, and metrics.
+- **Python 3.8+**
+- **streamlit:** UI/UX framework
+- **NumPy, pandas:** Data manipulation
+- **Altair:** Visualizations
+- **Statsmodels, pmdarima:** ARIMA time series modeling
+- **scikit-learn:** Evaluation metrics
+- **Yahoo Finance API:** Data sourcing
 
----
+***
 
-Please reach out if you need guidance on setting up the `Brain` or `Beauty` modules, or help with adding new features or deployments!
+## Customization \& Extensibility
+
+Trade Jockey is architected for modular expansion. You can easily add new metrics, prediction algorithms, or data sources by extending backend modules and updating the frontend controls. Custom analysis periods, comparison tables, and indicator plots are highly configurable.
+
+***
+
+## Contributing
+
+We welcome issues, ideas and PRs! Please ensure new code is well-documented and passes pre-commit linting, and submit pull requests with clear test cases.
+
+***
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for details.
+
+***
+
+Trade Jockey—empowering you with professional-grade analytics, forecast accuracy, and deep market insights for every trader’s journey.
+
+<div style="text-align: center">⁂</div>
+
+[^1]: init.py
+
+[^2]: adx.py
+
+[^3]: arima.py
+
+[^4]: volatility.py
+
+[^5]: market_prediction.ipynb
+
+[^6]: Home.py
+
+[^7]: calculations.py
+
+[^8]: data_loading.py
+
+[^9]: page_config.py
+
+[^10]: plot.py
+
+[^11]: sidebar.py
+
+[^12]: ui_controls.py
+
