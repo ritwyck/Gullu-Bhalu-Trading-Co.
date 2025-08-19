@@ -1,5 +1,5 @@
 import os
-from Backend.Strategy.volatility import load_data
+from Logic.Strategy.volatility import load_data
 
 
 def get_stock_files(data_folder):

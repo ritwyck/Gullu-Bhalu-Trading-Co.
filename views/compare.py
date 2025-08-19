@@ -1,8 +1,8 @@
 import urllib.parse
 import streamlit as st
-from Frontend.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
-from Frontend.modules.ui_controls import get_period_inputs
-from Frontend.modules.calculations import compute_multiple_volatility_ratios
+from UserInterface.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
+from UserInterface.modules.ui_controls import get_period_inputs
+from UserInterface.modules.calculations import compute_multiple_volatility_ratios
 import pandas as pd
 
 

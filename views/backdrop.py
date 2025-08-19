@@ -2,8 +2,8 @@ import streamlit as st
 import requests
 import yfinance as yf
 from datetime import datetime, timedelta
-from Frontend.modules.symbol_search import get_symbols
-from Frontend.modules.data_acquisition import fetch_historical_data
+from UserInterface.modules.symbol_search import get_symbols
+from UserInterface.modules.data_acquisition import fetch_historical_data
 
 
 def render_backdrop():

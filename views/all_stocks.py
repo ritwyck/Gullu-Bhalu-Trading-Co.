@@ -2,7 +2,7 @@ import os
 import urllib.parse
 import pandas as pd
 import streamlit as st
-from Backend.Strategy.volatility import load_data, historical_volatility
+from Logic.Strategy.volatility import load_data, historical_volatility
 
 
 def render_all_stocks(data_folder="Vault/Historical_Stock_Data"):

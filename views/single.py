@@ -1,10 +1,10 @@
 import urllib.parse
 import pandas as pd
 import streamlit as st
-from Frontend.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
-from Frontend.modules.ui_controls import get_metric_and_window, get_period_inputs
-from Frontend.modules.plot import plot_stock_metric
-from Frontend.modules.calculations import compute_volatility_and_ratios, compute_adx_table
+from UserInterface.modules.data_loading import get_stock_files, get_symbols, load_symbol_data
+from UserInterface.modules.ui_controls import get_metric_and_window, get_period_inputs
+from UserInterface.modules.plot import plot_stock_metric
+from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 
 
 def render_single_stock(data_folder="Vault/Historical_Stock_Data"):
