@@ -10,7 +10,7 @@ from Page.singleStock import render_single_stock
 
 def main():
     st.set_page_config(page_title="Trade Jockey Dashboard", layout="wide")
-    mode = st.sidebar.radio(["Single Stock"])
+    mode = st.sidebar.radio("Select mode", ["Single Stock"])
     symbols = _get_symbols_from_query()
 
     if mode == "Single Stock":
