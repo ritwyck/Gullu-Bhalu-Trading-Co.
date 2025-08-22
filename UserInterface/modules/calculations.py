@@ -5,29 +5,38 @@ from Logic.Strategy.adx import calculate_adx
 from UserInterface.modules.data_loading import load_symbol_data
 
 
-def compute_volatility_and_ratios(df, fixed_periods, ratio_ref_period):
-    # Defensive conversion if ratio_ref_period is list
-    if isinstance(ratio_ref_period, list):
-        ratio_ref_period = int(ratio_ref_period[0])
+def compute_volatility_and_ratios(df: pd.DataFrame, periods: list[int], ratio_ref_period: int):
+    """
+    Compute rolling volatility (std of log returns) and price ratios.
+    Returns a list of dict rows for display.
+    """
+    rows = []
 
-    _, ref_vol = historical_volatility(df["Close"].tail(ratio_ref_period))
-    vol_rows = []
-    for p in fixed_periods:
-        # Defensive conversion if p is list
-        if isinstance(p, list):
-            p = int(p[0])
+    # Daily log returns
+    if "Close" not in df.columns:
+        return rows
+    df = df.copy()
+    df["LogReturn"] = np.log(df["Close"] / df["Close"].shift(1))
 
-        annual_vol = ratio_val = None
-        if p <= len(df):
-            _, annual_vol = historical_volatility(df["Close"].tail(p))
-            if ref_vol and ref_vol != 0:
-                ratio_val = annual_vol / ref_vol
-        vol_rows.append({
-            "Volatility Period": p,
-            "Historical Volatility": round(annual_vol, 3) if annual_vol is not None else None,
-            f"Ratio vs {ratio_ref_period}d": round(ratio_val, 3) if ratio_val is not None else None
+    for p in periods:
+        vol = df["LogReturn"].rolling(
+            p).std().iloc[-1] * np.sqrt(252)  # annualized
+        ratio = None
+        if ratio_ref_period in df.index[-p:].shape:
+            # fallback if ref period too large
+            ratio = df["Close"].iloc[-1] / \
+                df["Close"].iloc[-ratio_ref_period] - 1
+        else:
+            if len(df) > ratio_ref_period:
+                ratio = df["Close"].iloc[-1] / \
+                    df["Close"].iloc[-ratio_ref_period] - 1
+
+        rows.append({
+            "Period (days)": p,
+            "Volatility": round(vol, 4) if pd.notna(vol) else None,
+            f"Return vs {ratio_ref_period}d": round(ratio, 4) if ratio is not None else None
         })
-    return vol_rows
+    return rows
 
 
 def compute_multiple_volatility_ratios(selected_symbols, files, data_folder, custom_period, ratio_ref_period):
@@ -69,32 +78,46 @@ def compute_multiple_volatility_ratios(selected_symbols, files, data_folder, cus
     return final_df
 
 
-def compute_adx_table(df, fixed_periods, adx_period=14):
-    adx_rows = []
-    for p in fixed_periods:
-        # Defensive conversion if necessary
-        if isinstance(p, list):
-            p = int(p[0])
+def compute_adx_table(df: pd.DataFrame, periods: list[int]):
+    """
+    Compute ADX (trend strength) for given periods.
+    Returns a list of dict rows for display.
+    """
+    if not {"High", "Low", "Close"}.issubset(df.columns):
+        return []
 
-        plus_di_val = minus_di_val = adx_val = None
-        if p >= adx_period and p <= len(df):
-            df_slice = df.tail(p)
-            adx_df = calculate_adx(
-                df_slice["High"].values,
-                df_slice["Low"].values,
-                df_slice["Close"].values,
-                period=adx_period
-            )
-            plus_di_val = round(
-                adx_df["+DI"].iloc[-1], 1) if not np.isnan(adx_df["+DI"].iloc[-1]) else None
-            minus_di_val = round(
-                adx_df["-DI"].iloc[-1], 1) if not np.isnan(adx_df["-DI"].iloc[-1]) else None
-            adx_val = round(
-                adx_df["ADX"].iloc[-1], 1) if not np.isnan(adx_df["ADX"].iloc[-1]) else None
-        adx_rows.append({
-            "Period": p,
-            "+DI": plus_di_val,
-            "-DI": minus_di_val,
-            "ADX": adx_val
+    rows = []
+
+    high, low, close = df["High"], df["Low"], df["Close"]
+
+    def compute_adx(period: int):
+        # True Range
+        tr = pd.concat([
+            high - low,
+            (high - close.shift()).abs(),
+            (low - close.shift()).abs()
+        ], axis=1).max(axis=1)
+
+        atr = tr.rolling(period).mean()
+
+        # Directional Movement
+        plus_dm = high.diff()
+        minus_dm = low.diff().abs()
+        plus_dm[plus_dm < 0] = 0
+        minus_dm[minus_dm < 0] = 0
+
+        plus_di = 100 * (plus_dm.rolling(period).mean() / atr)
+        minus_di = 100 * (minus_dm.rolling(period).mean() / atr)
+        dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
+        adx = dx.rolling(period).mean()
+
+        return adx.iloc[-1]
+
+    for p in periods:
+        adx_val = compute_adx(p)
+        rows.append({
+            "Period (days)": p,
+            "ADX": round(adx_val, 2) if pd.notna(adx_val) else None
         })
-    return adx_rows
+
+    return rows

@@ -31,7 +31,6 @@ def _get_symbol_from_query() -> str | None:
 
 
 def _set_symbol_in_query(symbol: str) -> None:
-    # Modern API (no experimental mix)
     st.query_params["symbol"] = symbol
 
 
@@ -53,7 +52,6 @@ def render_single_stock():
                 if st.button(f"{symbol} — {description}", key=f"symbtn_{symbol}"):
                     selected_symbol = symbol
                     _set_symbol_in_query(symbol)
-                    # Rerun so the rest of the UI reflects the new symbol immediately
                     st.rerun()
         else:
             st.warning("No matches found.")
@@ -69,7 +67,7 @@ def render_single_stock():
         st.error(f"No live historical data found for '{selected_symbol}'.")
         return
 
-    # --- Last week OHLC table & close chart ---
+    # --- Last week OHLC table (no plot here) ---
     start_ts = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=7)
     last_week_df = df_live.loc[df_live.index >= start_ts]
 
@@ -78,11 +76,11 @@ def render_single_stock():
 
     if not last_week_df.empty and ohlc_cols:
         st.subheader(f"{selected_symbol} — Last Week OHLC Data")
-
+        st.dataframe(last_week_df.loc[:, ohlc_cols])
     else:
         st.info("No recent last-week OHLC data available.")
 
-    # --- Metric controls & plotting ---
+    # --- Metric controls & plotting (single chart only) ---
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
