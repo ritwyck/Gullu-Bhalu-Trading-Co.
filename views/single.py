@@ -125,9 +125,11 @@ def main():
 
     if mode == "Single Stock":
         st.title("📈 Trade Jockey Dashboard - Single Stock")
-        symbol = symbols[0] if symbols else None
 
-        # Search input always shown
+        # ✅ Default to AAPL if none in query
+        symbol = symbols[0] if symbols else "AAPL"
+
+        # Search box for symbol
         search_query = st.text_input(
             "🔎 Search company name or symbol", key="search_text_single"
         )
@@ -142,14 +144,17 @@ def main():
             else:
                 st.warning("No matches found.")
 
-        if not symbol:
-            st.info("Please search and select a company symbol above to proceed.")
-            return
-
+        # ✅ Always render — at least AAPL
         render_single_stock(symbol)
 
     else:  # Compare Stocks mode
         st.title("📊 Trade Jockey Dashboard - Compare Stocks")
+
+        # ✅ Default comparison is AAPL vs MSFT
+        default_compare = ["AAPL", "MSFT"]
+        selected_symbols = symbols if len(symbols) >= 2 else default_compare
+
+        # Search box for multiple symbols
         search_query = st.text_input(
             "🔎 Search company names or symbols (comma separated)", key="search_text_compare"
         )
@@ -160,9 +165,8 @@ def main():
                 matches = search_symbols(term)
                 for sym, _ in matches:
                     matched_symbols_set.add(sym)
-        matched_symbols = sorted(matched_symbols_set)
-        selected_symbols = symbols if len(symbols) > 1 else matched_symbols[:2]
 
+        matched_symbols = sorted(matched_symbols_set)
         if matched_symbols:
             selected_symbols = st.multiselect(
                 "Select 2 to 10 stocks to compare from matched symbols",
@@ -171,8 +175,6 @@ def main():
                 help="Select at least 2 and up to 10 stocks",
             )
             _set_symbols_in_query(selected_symbols)
-        else:
-            st.warning("No matching companies found.")
 
         if not selected_symbols or len(selected_symbols) < 2:
             st.info("Please select at least 2 company symbols above to compare.")
