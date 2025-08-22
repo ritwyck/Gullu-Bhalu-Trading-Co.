@@ -1,6 +1,5 @@
 import pandas as pd
 import streamlit as st
-from datetime import timedelta
 from UserInterface.modules.symbol_search import get_symbols as search_symbols
 from UserInterface.modules.data_acquisition import fetch_historical_data
 from UserInterface.modules.ui_controls import get_metric_and_window, get_period_inputs
@@ -8,13 +7,15 @@ from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 
 
-@st.cache_data(show_spinner=False)
+# Cache only during session; data is discarded when session ends
+@st.cache_data(ttl=0, show_spinner=False)
 def _get_live(symbol: str) -> pd.DataFrame | None:
     try:
-        df = fetch_historical_data(symbol)
+        # <-- fetch more history
+        df = fetch_historical_data(symbol, period="2y", interval="1d")
         if df is None or df.empty:
             return None
-        # Ensure DatetimeIndex, drop tz for safe comparisons
+        # Ensure DatetimeIndex and clean
         if not isinstance(df.index, pd.DatetimeIndex):
             df.index = pd.to_datetime(df.index, errors="coerce")
         df = df[~df.index.isna()].copy()
@@ -35,7 +36,7 @@ def _set_symbol_in_query(symbol: str) -> None:
 
 
 def render_single_stock():
-    """Render the single stock analysis page with search and live data only."""
+    """Render the single stock analysis page with live data + calculations."""
     st.title("📈 Trade Jockey Dashboard")
 
     # --- Read symbol from URL if present ---
@@ -67,20 +68,17 @@ def render_single_stock():
         st.error(f"No live historical data found for '{selected_symbol}'.")
         return
 
-    # --- Last week OHLC table (no plot here) ---
-    start_ts = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=7)
-    last_week_df = df_live.loc[df_live.index >= start_ts]
-
+    # --- Show recent OHLC data (not charted) ---
+    recent_df = df_live.tail(30)  # last 30 days
     ohlc_cols = [c for c in ["Open", "High",
                              "Low", "Close"] if c in df_live.columns]
-
-    if not last_week_df.empty and ohlc_cols:
-        st.subheader(f"{selected_symbol} — Last Week OHLC Data")
-        st.dataframe(last_week_df.loc[:, ohlc_cols])
+    if not recent_df.empty and ohlc_cols:
+        st.subheader(f"{selected_symbol} — Recent OHLC Data (30 days)")
+        st.dataframe(recent_df.loc[:, ohlc_cols])
     else:
-        st.info("No recent last-week OHLC data available.")
+        st.info("No OHLC data available.")
 
-    # --- Metric controls & plotting (single chart only) ---
+    # --- Metric controls & plotting ---
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
@@ -95,11 +93,17 @@ def render_single_stock():
     adx_rows = compute_adx_table(df_live, fixed_periods)
 
     # --- Display tables ---
-    st.subheader(f"{selected_symbol} — Volatility & Ratio Table")
-    st.dataframe(pd.DataFrame(vol_rows))
+    if vol_rows:
+        st.subheader(f"{selected_symbol} — Volatility & Ratio Table")
+        st.dataframe(pd.DataFrame(vol_rows))
+    else:
+        st.info("Volatility & ratio calculations unavailable for this symbol.")
 
-    st.subheader(f"{selected_symbol} — ADX Table")
-    st.dataframe(pd.DataFrame(adx_rows))
+    if adx_rows:
+        st.subheader(f"{selected_symbol} — ADX Table")
+        st.dataframe(pd.DataFrame(adx_rows))
+    else:
+        st.info("ADX calculations unavailable for this symbol.")
 
 
 if __name__ == "__main__":
