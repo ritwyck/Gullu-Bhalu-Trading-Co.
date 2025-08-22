@@ -41,7 +41,7 @@ def _get_symbols_from_query() -> list[str]:
 
 
 def _set_symbols_in_query(symbols: list[str]) -> None:
-    st.experimental_set_query_params(symbol=symbols)
+    st.query_params["symbol"] = symbols
 
 
 # ----------------------------
