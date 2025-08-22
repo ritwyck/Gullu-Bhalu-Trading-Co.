@@ -6,7 +6,7 @@ from UserInterface.modules.ui_controls import get_metric_and_window, get_period_
 from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 from Page.singleStock import render_single_stock
-from Page.multipleStock import render_compare_stocks
+from Page.multipleStock import render_multi_stocks
 
 
 def main():
