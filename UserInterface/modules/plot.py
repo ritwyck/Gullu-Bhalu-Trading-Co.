@@ -7,26 +7,35 @@ import altair as alt
 from Logic.Strategy.volatility import realized_volatility
 
 
-def plot_stock_metric(df, metric, window=None):
-    if metric == "Volatility":
-        vol = df["Close"].rolling(window).apply(
-            lambda x: realized_volatility(x), raw=False)
-        plot_df = df[["Date"]].copy()
-        plot_df["Volatility"] = vol
+def plot_stock_metric(df: pd.DataFrame, metric: str, window: int | None = None):
+    """Plots either a chosen metric or rolling volatility from a stock DataFrame."""
+
+    # Ensure we always have a 'Date' column
+    if "Date" not in df.columns:
+        df = df.reset_index().rename(
+            columns={df.index.name or "index": "Date"})
+
+    if metric == "Volatility" and window:
+        # Example: compute rolling volatility
+        df["Volatility"] = df["Close"].pct_change().rolling(window).std()
         y_col = "Volatility"
         ylabel = f"Rolling {window}-day Volatility"
     else:
-        plot_df = df[["Date", metric]].copy()
+        if metric not in df.columns:
+            st.error(f"Metric '{metric}' not found in data.")
+            return
         y_col = metric
         ylabel = metric
 
-    chart = (
-        alt.Chart(plot_df.dropna())
-        .mark_line()
-        .encode(
-            x=alt.X('Date:T', title='Date'),
-            y=alt.Y(f'{y_col}:Q', title=ylabel)
-        )
-        .properties(width=700, height=400, title=f"{ylabel} over Time")
+    plot_df = df[["Date", y_col]].dropna()
+
+    if plot_df.empty:
+        st.warning(f"No data available to plot for {metric}.")
+        return
+
+    st.line_chart(
+        plot_df.set_index("Date")[y_col],
+        use_container_width=True,
+        height=400,
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.caption(f"Chart: {ylabel}")
