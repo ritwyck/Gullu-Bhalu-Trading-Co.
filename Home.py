@@ -1,6 +1,5 @@
 from UserInterface.modules.page_config import set_page_config
 from UserInterface.modules.sidebar import custom_sidebar, hide_default_nav
-from views.backdrop import render_backdrop
 from views.all_stocks import render_all_stocks
 from views.compare import render_compare_stocks
 from views.single import render_single_stock
