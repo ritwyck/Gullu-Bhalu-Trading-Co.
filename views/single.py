@@ -73,17 +73,6 @@ def render_single_stock():
     start_ts = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=7)
     last_week_df = df_live.loc[df_live.index >= start_ts]
 
-    ohlc_cols = [c for c in ["Open", "High",
-                             "Low", "Close"] if c in df_live.columns]
-
-    if not last_week_df.empty and ohlc_cols:
-        st.subheader(f"{selected_symbol} — Last Week OHLC Data")
-        st.dataframe(last_week_df.loc[:, ohlc_cols])
-
-    else:
-        st.info("No recent last-week OHLC data available.")
-
-    # --- Metric controls & plotting ---
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
