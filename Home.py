@@ -170,6 +170,7 @@ def main():
             "🔎 Search company names or symbols (comma separated)",
             key="search_text_compare"
         )
+
         matched_symbols_set = set()
         if search_query:
             terms = [t.strip() for t in search_query.split(",") if t.strip()]
@@ -179,6 +180,7 @@ def main():
                     matched_symbols_set.add(sym)
 
         matched_symbols = sorted(matched_symbols_set)
+
         if matched_symbols:
             selected_symbols = st.multiselect(
                 "Select 2 to 10 stocks to compare from matched symbols",
@@ -188,16 +190,61 @@ def main():
             )
             _set_symbols_in_query(selected_symbols)
 
+        # Guard clause: wait for 2+ valid symbols
         if not selected_symbols or len(selected_symbols) < 2:
             st.info("Please select at least 2 company symbols above to compare.")
             return
 
+        # Limit to 10 stocks
         if len(selected_symbols) > 10:
             st.warning("Please select no more than 10 stocks.")
             selected_symbols = selected_symbols[:10]
             _set_symbols_in_query(selected_symbols)
 
-        render_compare_stocks(selected_symbols)
+        # === Fetch & Plot ===
+        valid_data = {}
+        for sym in selected_symbols:
+            df = _get_live(sym)
+            if df is not None and not df.empty:
+                valid_data[sym] = df
+            else:
+                st.warning(f"No data for {sym}, skipping.")
+
+        if not valid_data:
+            st.error("No valid data found for selected stocks.")
+            return
+
+        # Combine into one chart
+        st.subheader("📈 Price Comparison")
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        for sym, df in valid_data.items():
+            fig.add_trace(go.Scatter(
+                x=df.index, y=df["Close"], mode="lines", name=sym
+            ))
+        fig.update_layout(xaxis_title="Date",
+                          yaxis_title="Close Price", hovermode="x unified")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Volatility & Ratios
+        max_len = max(len(df) for df in valid_data.values())
+        fixed_periods, ratio_ref_period = get_period_inputs(max_len)
+
+        all_rows = []
+        for sym, df in valid_data.items():
+            vol_rows = compute_volatility_and_ratios(
+                df, fixed_periods, ratio_ref_period)
+            for row in vol_rows:
+                row["Symbol"] = sym
+                all_rows.append(row)
+
+        if all_rows:
+            st.subheader("📊 Volatility & Ratio Comparison")
+            st.dataframe(pd.DataFrame(all_rows))
+        else:
+            st.info("Volatility & ratio calculations unavailable.")
+
+            render_compare_stocks(selected_symbols)
 
 
 if __name__ == "__main__":
