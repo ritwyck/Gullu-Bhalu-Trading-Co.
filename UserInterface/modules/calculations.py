@@ -44,77 +44,110 @@ def compute_multiple_volatility_ratios(selected_symbols, files, data_folder, cus
     return final_df
 
 
+def _last_valid(s: pd.Series) -> float | None:
+    if s is None:
+        return None
+    s = s.dropna()
+    return float(s.iloc[-1]) if len(s) else None
+
+
+def _r(x, n):
+    return round(float(x), n) if x is not None and np.isfinite(x) else None
+
+
+def _wilder_rma(s: pd.Series, period: int) -> pd.Series:
+    # Wilder's smoothing = EMA with alpha = 1/period, adjust=False
+    return s.ewm(alpha=1/period, adjust=False, min_periods=period).mean()
+
+
 def compute_volatility_and_ratios(df: pd.DataFrame, periods: list[int], ratio_ref_period: int):
     """
-    Compute rolling volatility (annualized std of log returns) and return ratios.
+    Volatility: rolling std of log returns (annualized).
+    Ratio: vol(period) / vol(ratio_ref_period).
     """
-    rows = []
-
-    if "Close" not in df.columns or len(df) < max(periods) + 1:
+    rows: list[dict] = []
+    if "Close" not in df.columns or len(df) < 3:
         return rows
 
-    df = df.copy()
-    df["LogReturn"] = np.log(df["Close"] / df["Close"].shift(1))
+    close = df["Close"].astype(float)
+    logret = np.log(close).diff()
 
-    for p in periods:
-        if len(df) > p:
-            vol = df["LogReturn"].rolling(p).std().iloc[-1]
-            if pd.notna(vol):
-                vol = vol * np.sqrt(252)  # annualize
+    # reference volatility
+    ref_series = logret.rolling(
+        ratio_ref_period, min_periods=ratio_ref_period).std(ddof=0) * np.sqrt(252)
+    ref_vol = _last_valid(ref_series)
 
-            ratio = None
-            if len(df) > ratio_ref_period:
-                ratio = df["Close"].iloc[-1] / \
-                    df["Close"].iloc[-ratio_ref_period] - 1
+    for p in sorted(set(periods)):
+        if len(df) < p + 2:
+            rows.append({"Period (days)": p, "Volatility": None,
+                        f"Ratio vs {ratio_ref_period}d": None})
+            continue
 
-            rows.append({
-                "Period (days)": p,
-                "Volatility": round(vol, 4) if pd.notna(vol) else None,
-                f"Return vs {ratio_ref_period}d": round(ratio, 4) if ratio is not None else None
-            })
+        vol_series = logret.rolling(
+            p, min_periods=p).std(ddof=0) * np.sqrt(252)
+        vol = _last_valid(vol_series)
+
+        ratio = (
+            vol / ref_vol) if (vol is not None and ref_vol and ref_vol > 0) else None
+
+        rows.append({
+            "Period (days)": p,
+            "Volatility": _r(vol, 4),
+            f"Ratio vs {ratio_ref_period}d": _r(ratio, 3),
+        })
     return rows
 
 
 def compute_adx_table(df: pd.DataFrame, periods: list[int]):
     """
-    Compute ADX for each period.
+    ADX using Wilder’s method. Also returns latest +DI and -DI.
     """
     if not {"High", "Low", "Close"}.issubset(df.columns):
         return []
 
-    rows = []
-    high, low, close = df["High"], df["Low"], df["Close"]
+    high = df["High"].astype(float)
+    low = df["Low"].astype(float)
+    close = df["Close"].astype(float)
 
-    for p in periods:
-        if len(df) <= p:
-            continue
+    # True Range
+    tr = pd.concat([
+        high - low,
+        (high - close.shift()).abs(),
+        (low - close.shift()).abs()
+    ], axis=1).max(axis=1)
 
-        # True Range
-        tr = pd.concat([
-            high - low,
-            (high - close.shift()).abs(),
-            (low - close.shift()).abs()
-        ], axis=1).max(axis=1)
-        atr = tr.rolling(p).mean()
-
-        # +DM / -DM
-        up_move = high.diff()
-        down_move = -low.diff()
-
-        plus_dm = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
-        minus_dm = np.where((down_move > up_move) &
+    # Directional Movement (raw)
+    up_move = high.diff()
+    down_move = low.shift(1) - low  # yesterday low - today low
+    plus_dm_raw = np.where((up_move > down_move) & (up_move > 0), up_move, 0.0)
+    minus_dm_raw = np.where((down_move > up_move) &
                             (down_move > 0), down_move, 0.0)
 
-        plus_di = 100 * (pd.Series(plus_dm).rolling(p).mean() / atr)
-        minus_di = 100 * (pd.Series(minus_dm).rolling(p).mean() / atr)
+    plus_dm = pd.Series(plus_dm_raw, index=high.index)
+    minus_dm = pd.Series(minus_dm_raw, index=high.index)
 
-        dx = (abs(plus_di - minus_di) / (plus_di + minus_di)) * 100
-        adx = dx.rolling(p).mean()
+    rows: list[dict] = []
+    for p in sorted(set(periods)):
+        if len(df) < p + 2:
+            rows.append({"Period (days)": p, "+DI": None,
+                        "-DI": None, "ADX": None})
+            continue
 
-        adx_val = adx.iloc[-1]
+        tr_rma = _wilder_rma(tr, p)
+        plus_rma = _wilder_rma(plus_dm, p)
+        minus_rma = _wilder_rma(minus_dm, p)
+
+        plus_di = 100 * (plus_rma / tr_rma.replace(0, np.nan))
+        minus_di = 100 * (minus_rma / tr_rma.replace(0, np.nan))
+
+        sum_di = (plus_di + minus_di).replace(0, np.nan)
+        dx = ((plus_di - minus_di).abs() / sum_di) * 100
+        adx = _wilder_rma(dx, p)
+
         rows.append({
             "Period (days)": p,
-            "ADX": round(adx_val, 2) if pd.notna(adx_val) else None
+            "+DI": _r(_last_valid(plus_di), 2),
+            "-DI": _r(_last_valid(minus_di), 2),
+            "ADX": _r(_last_valid(adx), 2),
         })
-
     return rows
