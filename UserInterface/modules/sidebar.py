@@ -5,9 +5,9 @@ def custom_sidebar():
     st.sidebar.image("trade-jockey.png", width=120)
     st.sidebar.markdown("## Navigation")
 
-    pages = ["Home", "All-Stocks", "Compare-Stocks", "Stocks"]
+    pages = ["All-Stocks", "Compare-Stocks", "Stocks"]
     params = st.query_params
-    current_page = params.get("page", "Home")
+    current_page = params.get("page", "Stocks")
 
     for page in pages:
         url = f"/?page={page}"
