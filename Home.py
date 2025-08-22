@@ -17,8 +17,10 @@ set_page_config()
 hide_default_nav()
 page = custom_sidebar()
 
+symbol = st.sidebar.text_input("Enter stock symbol", "AAPL")
+
 routes = {
-    "Stocks": render_single_stock,
+    "Stocks": lambda: render_single_stock(symbol),
     "All-Stocks": render_all_stocks
 }
 
