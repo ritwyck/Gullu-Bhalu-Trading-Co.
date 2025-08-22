@@ -1,7 +1,6 @@
-import urllib.parse
 import pandas as pd
 import streamlit as st
-from datetime import datetime, timedelta
+from datetime import timedelta
 from UserInterface.modules.symbol_search import get_symbols as search_symbols
 from UserInterface.modules.data_acquisition import fetch_historical_data
 from UserInterface.modules.ui_controls import get_metric_and_window, get_period_inputs
@@ -9,78 +8,100 @@ from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 
 
+@st.cache_data(show_spinner=False)
+def _get_live(symbol: str) -> pd.DataFrame | None:
+    try:
+        df = fetch_historical_data(symbol)
+        if df is None or df.empty:
+            return None
+        # Ensure DatetimeIndex, drop tz for safe comparisons
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.to_datetime(df.index, errors="coerce")
+        df = df[~df.index.isna()].copy()
+        if getattr(df.index, "tz", None) is not None:
+            df.index = df.index.tz_convert(None)
+        return df.sort_index()
+    except Exception:
+        return None
+
+
+def _get_symbol_from_query() -> str | None:
+    qp = st.query_params
+    return qp.get("symbol") if isinstance(qp.get("symbol"), str) else None
+
+
+def _set_symbol_in_query(symbol: str) -> None:
+    # Modern API (no experimental mix)
+    st.query_params["symbol"] = symbol
+
+
 def render_single_stock():
     """Render the single stock analysis page with search and live data only."""
-
     st.title("📈 Trade Jockey Dashboard")
 
-    # --- Search input for company name or symbol ---
-    query = st.text_input("🔎 Search company name or symbol")
+    # --- Read symbol from URL if present ---
+    selected_symbol = _get_symbol_from_query()
 
-    selected_symbol = None
+    # --- Search input for company name or symbol ---
+    query = st.text_input("🔎 Search company name or symbol", value="")
 
     if query:
-        matches = search_symbols(query)  # List of (symbol, description)
+        matches = search_symbols(query)  # List[Tuple[symbol, description]]
         if matches:
             st.write("Matching companies and symbols:")
             for symbol, description in matches:
-                if st.button(f"{symbol} — {description}"):
+                if st.button(f"{symbol} — {description}", key=f"symbtn_{symbol}"):
                     selected_symbol = symbol
-                    # Clear other buttons by breaking loop
-                    break
+                    _set_symbol_in_query(symbol)
+                    # Rerun so the rest of the UI reflects the new symbol immediately
+                    st.rerun()
         else:
             st.warning("No matches found.")
 
-    # --- Require symbol selection via search ---
-    if selected_symbol is None:
+    # --- Require symbol selection ---
+    if not selected_symbol:
         st.info("Please search and select a company symbol above to proceed.")
         return
 
-    # --- Update URL param for selected symbol ---
-    st.query_params["symbol"] = selected_symbol
-
     # --- Fetch live historical data for selected symbol ---
-    df_live = fetch_historical_data(selected_symbol)
-
+    df_live = _get_live(selected_symbol)
     if df_live is None or df_live.empty:
-        st.error(
-            f"No live historical data found for symbol '{selected_symbol}'.")
+        st.error(f"No live historical data found for '{selected_symbol}'.")
         return
 
-    # --- Show OHLC last week table from live data ---
-    if not isinstance(df_live.index, pd.DatetimeIndex):
-        df_live.index = pd.to_datetime(df_live.index)
+    # --- Last week OHLC table & close chart ---
+    start_ts = pd.Timestamp.utcnow().tz_localize(None) - pd.Timedelta(days=7)
+    last_week_df = df_live.loc[df_live.index >= start_ts]
 
-    start_date = datetime.today() - timedelta(days=7)
-    last_week_df = df_live[df_live.index >= start_date]
+    ohlc_cols = [c for c in ["Open", "High",
+                             "Low", "Close"] if c in df_live.columns]
 
-    if not last_week_df.empty:
-        st.subheader(f"{selected_symbol} - Last Week OHLC Data")
-        st.dataframe(last_week_df.loc[:, ["Open", "High", "Low", "Close"]])
-        st.line_chart(last_week_df["Close"])
+    if not last_week_df.empty and ohlc_cols:
+        st.subheader(f"{selected_symbol} — Last Week OHLC Data")
+        st.dataframe(last_week_df.loc[:, ohlc_cols])
+        if "Close" in last_week_df.columns:
+            st.line_chart(last_week_df["Close"])
     else:
-        st.info("No recent last week data available.")
+        st.info("No recent last-week OHLC data available.")
 
-    # --- Use live data for plotting and calculations ---
-    df = df_live
-
-    # --- Plot metric and volatility ---
+    # --- Metric controls & plotting ---
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
-    plot_stock_metric(df, metric, window if metric == "Volatility" else None)
+    plot_stock_metric(df_live, metric, window if metric ==
+                      "Volatility" else None)
 
     # --- Compute volatility, ratios, and ADX ---
-    fixed_periods, ratio_ref_period = get_period_inputs(len(df))
+    fixed_periods, ratio_ref_period = get_period_inputs(len(df_live))
     vol_rows = compute_volatility_and_ratios(
-        df, fixed_periods, ratio_ref_period)
-    adx_rows = compute_adx_table(df, fixed_periods)
+        df_live, fixed_periods, ratio_ref_period)
+    adx_rows = compute_adx_table(df_live, fixed_periods)
 
     # --- Display tables ---
-    st.subheader(f"{selected_symbol} - Volatility & Ratio Table")
+    st.subheader(f"{selected_symbol} — Volatility & Ratio Table")
     st.dataframe(pd.DataFrame(vol_rows))
 
-    st.subheader(f"{selected_symbol} - ADX Table")
+    st.subheader(f"{selected_symbol} — ADX Table")
     st.dataframe(pd.DataFrame(adx_rows))
 
 
