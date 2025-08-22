@@ -1,7 +1,6 @@
 from UserInterface.modules.page_config import set_page_config
 from UserInterface.modules.sidebar import custom_sidebar, hide_default_nav
 from views.all_stocks import render_all_stocks
-from views.compare import render_compare_stocks
 from views.single import render_single_stock
 from Logic.Strategy.volatility import load_data, historical_volatility
 from UserInterface.modules.plot import plot_stock_metric
@@ -20,8 +19,6 @@ page = custom_sidebar()
 
 routes = {
     "Stocks": render_single_stock,
-    "Compare-Stocks": render_compare_stocks,
-
     "All-Stocks": render_all_stocks
 }
 
