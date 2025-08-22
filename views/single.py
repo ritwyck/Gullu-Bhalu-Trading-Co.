@@ -79,8 +79,7 @@ def render_single_stock():
     if not last_week_df.empty and ohlc_cols:
         st.subheader(f"{selected_symbol} — Last Week OHLC Data")
         st.dataframe(last_week_df.loc[:, ohlc_cols])
-        if "Close" in last_week_df.columns:
-            st.line_chart(last_week_df["Close"])
+
     else:
         st.info("No recent last-week OHLC data available.")
 
