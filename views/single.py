@@ -6,8 +6,6 @@ from UserInterface.modules.ui_controls import get_metric_and_window, get_period_
 from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 
-# Cache only during session
-
 
 @st.cache_data(ttl=0, show_spinner=False)
 def _get_live(symbol: str) -> pd.DataFrame | None:
@@ -41,13 +39,11 @@ def _set_symbols_in_query(symbols: list[str]) -> None:
 
 
 def render_single_stock(symbol: str):
-    # All stock + metrics rendering happens here
     df_live = _get_live(symbol)
     if df_live is None or df_live.empty:
         st.error(f"No live historical data found for '{symbol}'.")
         return
 
-    # Show last 30 days OHLC table
     recent_df = df_live.tail(30)
     ohlc_cols = [c for c in ["Open", "High",
                              "Low", "Close"] if c in df_live.columns]
@@ -57,7 +53,6 @@ def render_single_stock(symbol: str):
     else:
         st.info("No OHLC data available.")
 
-    # Plot metric of interest
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
@@ -65,7 +60,6 @@ def render_single_stock(symbol: str):
     plot_stock_metric(df_for_plot, metric, window if metric ==
                       "Volatility" else None)
 
-    # Volatility & Ratios
     fixed_periods, ratio_ref_period = get_period_inputs(len(df_live))
     vol_rows = compute_volatility_and_ratios(
         df_live, fixed_periods, ratio_ref_period)
@@ -85,12 +79,13 @@ def render_single_stock(symbol: str):
 
 
 def main():
+    st.set_page_config(page_title="Trade Jockey Dashboard", layout="wide")
     st.title("📈 Trade Jockey Dashboard - Single Stock")
 
     symbols = _get_symbols_from_query()
     symbol = symbols[0] if symbols else None
 
-    # Searchbar always shown
+    # Top-page search bar and match picker
     search_query = st.text_input(
         "🔎 Search company name or symbol", key="search_text_single")
     if search_query:
@@ -104,7 +99,6 @@ def main():
         else:
             st.warning("No matches found.")
 
-    # Prompt when empty/unselected
     if not symbol:
         st.info("Please search and select a company symbol above to proceed.")
         return
