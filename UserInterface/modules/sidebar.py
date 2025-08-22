@@ -46,7 +46,6 @@ st.markdown("""
 
 def custom_sidebar():
     st.sidebar.image("trade-jockey.png", width=120)
-    st.sidebar.markdown("## Navigation")
 
     pages = ["All-Stocks", "Compare-Stocks", "Stocks"]
     params = st.query_params
