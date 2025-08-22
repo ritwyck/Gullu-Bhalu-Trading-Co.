@@ -88,7 +88,8 @@ def render_single_stock():
     metric, window = get_metric_and_window(
         ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
     )
-    plot_stock_metric(df_live, metric, window if metric ==
+    df_for_plot = df_live.reset_index().rename(columns={"index": "Date"})
+    plot_stock_metric(df_for_plot, metric, window if metric ==
                       "Volatility" else None)
 
     # --- Compute volatility, ratios, and ADX ---
