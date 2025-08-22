@@ -154,7 +154,7 @@ def main():
                 for sym, desc in matches:
                     if st.button(f"{sym} — {desc}", key=f"btn_single_{sym}"):
                         _set_symbols_in_query([sym])
-                        st.experimental_rerun()
+                        st.rerun()
             else:
                 st.warning("No matches found.")
 
