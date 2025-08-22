@@ -78,32 +78,112 @@ def render_single_stock(symbol: str):
         st.info("ADX calculations unavailable for this symbol.")
 
 
-def main():
-    st.set_page_config(page_title="Trade Jockey Dashboard", layout="wide")
-    st.title("📈 Trade Jockey Dashboard - Single Stock")
-
-    symbols = _get_symbols_from_query()
-    symbol = symbols[0] if symbols else None
-
-    # Top-page search bar and match picker
-    search_query = st.text_input(
-        "🔎 Search company name or symbol", key="search_text_single")
-    if search_query:
-        matches = search_symbols(search_query)
-        if matches:
-            st.write("Matching companies and symbols:")
-            for sym, desc in matches:
-                if st.button(f"{sym} — {desc}", key=f"btn_single_{sym}"):
-                    _set_symbols_in_query([sym])
-                    st.experimental_rerun()
+def render_compare_stocks(symbols: list[str]):
+    st.title("📊 Trade Jockey Dashboard - Compare Stocks")
+    valid_data = {}
+    for sym in symbols:
+        df = _get_live(sym)
+        if df is not None and not df.empty:
+            valid_data[sym] = df
         else:
-            st.warning("No matches found.")
+            st.warning(f"No live data found for {sym}. Skipping.")
 
-    if not symbol:
-        st.info("Please search and select a company symbol above to proceed.")
+    if not valid_data:
+        st.error("No valid data found for any selected stocks.")
         return
 
-    render_single_stock(symbol)
+    max_len = max(len(df) for df in valid_data.values())
+    fixed_periods, ratio_ref_period = get_period_inputs(max_len)
+
+    all_rows = []
+    for sym, df in valid_data.items():
+        vol_rows = compute_volatility_and_ratios(
+            df, fixed_periods, ratio_ref_period)
+        for row in vol_rows:
+            row["Symbol"] = sym
+            all_rows.append(row)
+
+    if not all_rows:
+        st.error("Volatility & ratio calculations unavailable for selected symbols.")
+        return
+
+    vol_df = pd.DataFrame(all_rows)
+    st.subheader("Volatility & Ratio Comparison Table")
+    st.dataframe(vol_df)
+
+    # Plot each stock
+    for sym, df in valid_data.items():
+        st.markdown(f"### {sym} - Close Price Chart")
+        df_for_plot = df.reset_index().rename(columns={"index": "Date"})
+        plot_stock_metric(df_for_plot, "Close", None)
+
+
+def main():
+    st.set_page_config(page_title="Trade Jockey Dashboard", layout="wide")
+    mode = st.sidebar.radio("Select mode", ["Single Stock", "Compare Stocks"])
+    symbols = _get_symbols_from_query()
+
+    if mode == "Single Stock":
+        st.title("📈 Trade Jockey Dashboard - Single Stock")
+        symbol = symbols[0] if symbols else None
+
+        # Search input always shown
+        search_query = st.text_input(
+            "🔎 Search company name or symbol", key="search_text_single"
+        )
+        if search_query:
+            matches = search_symbols(search_query)
+            if matches:
+                st.write("Matching companies and symbols:")
+                for sym, desc in matches:
+                    if st.button(f"{sym} — {desc}", key=f"btn_single_{sym}"):
+                        _set_symbols_in_query([sym])
+                        st.experimental_rerun()
+            else:
+                st.warning("No matches found.")
+
+        if not symbol:
+            st.info("Please search and select a company symbol above to proceed.")
+            return
+
+        render_single_stock(symbol)
+
+    else:  # Compare Stocks mode
+        st.title("📊 Trade Jockey Dashboard - Compare Stocks")
+        search_query = st.text_input(
+            "🔎 Search company names or symbols (comma separated)", key="search_text_compare"
+        )
+        matched_symbols_set = set()
+        if search_query:
+            terms = [t.strip() for t in search_query.split(",") if t.strip()]
+            for term in terms:
+                matches = search_symbols(term)
+                for sym, _ in matches:
+                    matched_symbols_set.add(sym)
+        matched_symbols = sorted(matched_symbols_set)
+        selected_symbols = symbols if len(symbols) > 1 else matched_symbols[:2]
+
+        if matched_symbols:
+            selected_symbols = st.multiselect(
+                "Select 2 to 10 stocks to compare from matched symbols",
+                matched_symbols,
+                default=selected_symbols,
+                help="Select at least 2 and up to 10 stocks",
+            )
+            _set_symbols_in_query(selected_symbols)
+        else:
+            st.warning("No matching companies found.")
+
+        if not selected_symbols or len(selected_symbols) < 2:
+            st.info("Please select at least 2 company symbols above to compare.")
+            return
+
+        if len(selected_symbols) > 10:
+            st.warning("Please select no more than 10 stocks.")
+            selected_symbols = selected_symbols[:10]
+            _set_symbols_in_query(selected_symbols)
+
+        render_compare_stocks(selected_symbols)
 
 
 if __name__ == "__main__":
