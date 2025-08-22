@@ -96,11 +96,9 @@ def render_compare_stocks(symbols: list[str]):
         st.error("No valid data found for any selected stocks.")
         return
 
-    # Determine max data length for period inputs
     max_len = max(len(df) for df in valid_data.values())
     fixed_periods, ratio_ref_period = get_period_inputs(max_len)
 
-    # Compute volatility & ratios for each symbol and gather results
     all_rows = []
     for sym, df in valid_data.items():
         vol_rows = compute_volatility_and_ratios(
@@ -115,11 +113,10 @@ def render_compare_stocks(symbols: list[str]):
 
     vol_df = pd.DataFrame(all_rows)
 
-    # Show comparison table
     st.subheader("Volatility & Ratio Comparison Table")
     st.dataframe(vol_df)
 
-    # Optionally plot a combined chart or individual charts
+    # Plot individual close price charts
     for sym, df in valid_data.items():
         st.markdown(f"### {sym} - Close Price Chart")
         df_for_plot = df.reset_index().rename(columns={"index": "Date"})
@@ -131,18 +128,17 @@ def main():
     symbols = _get_symbols_from_query()
 
     if mode == "Single Stock":
-        # Only accept single symbol for single stock mode
         symbol = symbols[0] if symbols else None
 
-        st.sidebar.text_input(
-            "Search company name or symbol", key="search_text")
-        query = st.session_state.get("search_text", "")
-        if query:
-            matches = search_symbols(query)
+        # Search input inside main page for single stock mode
+        search_query = st.text_input(
+            "🔎 Search company name or symbol", key="search_text_single")
+        if search_query:
+            matches = search_symbols(search_query)
             if matches:
                 st.write("Matching companies and symbols:")
                 for sym, desc in matches:
-                    if st.button(f"{sym} — {desc}", key=f"btn_{sym}"):
+                    if st.button(f"{sym} — {desc}", key=f"btn_single_{sym}"):
                         _set_symbols_in_query([sym])
                         st.experimental_rerun()
             else:
@@ -155,13 +151,11 @@ def main():
         render_single_stock(symbol)
 
     else:  # Compare Stocks mode
-        # Accept multiple symbols for compare mode
-        st.sidebar.text_input(
-            "Search company names or symbols (comma separated)", key="search_text_compare")
-        compare_query = st.session_state.get("search_text_compare", "")
+        search_query = st.text_input(
+            "🔎 Search company names or symbols (comma separated)", key="search_text_compare")
         matched_symbols_set = set()
-        if compare_query:
-            terms = [t.strip() for t in compare_query.split(",") if t.strip()]
+        if search_query:
+            terms = [t.strip() for t in search_query.split(",") if t.strip()]
             for term in terms:
                 matches = search_symbols(term)
                 for sym, _ in matches:
