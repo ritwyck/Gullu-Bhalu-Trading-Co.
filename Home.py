@@ -17,7 +17,8 @@ set_page_config()
 hide_default_nav()
 page = custom_sidebar()
 
-symbol = st.query_params.get("symbol", [None])[0]
+
+symbol = 'AAPL'
 routes = {
     "Stocks": lambda: render_single_stock(symbol),
     "All-Stocks": render_all_stocks
