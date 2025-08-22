@@ -38,8 +38,18 @@ def _set_symbols_in_query(symbols: list[str]) -> None:
     st.experimental_set_query_params(symbol=symbols)
 
 
-def render_single_stock(symbol: str):
+def render_single_stock():
     st.title("📈 Trade Jockey Dashboard - Single Stock")
+
+    # Fetch symbol directly here from query params
+    symbols = _get_symbols_from_query()
+    symbol = symbols[0] if symbols else None
+
+    # Rest of your search input & matching logic can remain outside or inside here as needed
+
+    if not symbol:
+        st.info("Please search and select a company symbol above to proceed.")
+        return
 
     df_live = _get_live(symbol)
     if df_live is None or df_live.empty:
