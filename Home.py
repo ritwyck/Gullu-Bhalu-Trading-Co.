@@ -1,141 +1,14 @@
 import pandas as pd
 import streamlit as st
 from UserInterface.modules.symbol_search import get_symbols as search_symbols
-from UserInterface.modules.data_acquisition import fetch_historical_data
+from UserInterface.modules.data_acquisition import fetch_historical_data, _get_live, _get_symbols_from_query, _set_symbols_in_query
 from UserInterface.modules.ui_controls import get_metric_and_window, get_period_inputs
 from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
+from Page.singleStock import render_single_stock
+from Page.multipleStock import render_compare_stocks
 
 
-# ----------------------------
-# Caching wrapper for live data
-# ----------------------------
-@st.cache_data(ttl=0, show_spinner=False)
-def _get_live(symbol: str) -> pd.DataFrame | None:
-    try:
-        df = fetch_historical_data(symbol, period="2y", interval="1d")
-        if df is None or df.empty:
-            return None
-        if not isinstance(df.index, pd.DatetimeIndex):
-            df.index = pd.to_datetime(df.index, errors="coerce")
-        df = df[~df.index.isna()].copy()
-        if getattr(df.index, "tz", None) is not None:
-            df.index = df.index.tz_convert(None)
-        return df.sort_index()
-    except Exception:
-        return None
-
-
-# ----------------------------
-# Query Param Helpers
-# ----------------------------
-def _get_symbols_from_query() -> list[str]:
-    qp = st.query_params
-    val = qp.get("symbol")
-    if isinstance(val, str):
-        return [val]
-    elif isinstance(val, list):
-        return val
-    else:
-        return []
-
-
-def _set_symbols_in_query(symbols: list[str]) -> None:
-    st.query_params["symbol"] = symbols
-
-
-# ----------------------------
-# Single Stock Renderer
-# ----------------------------
-def render_single_stock(symbol: str):
-    df_live = _get_live(symbol)
-    if df_live is None or df_live.empty:
-        st.error(f"No live historical data found for '{symbol}'.")
-        return
-
-    # Raw OHLC display
-    recent_df = df_live.tail(30)
-    ohlc_cols = [c for c in ["Open", "High",
-                             "Low", "Close"] if c in df_live.columns]
-    if not recent_df.empty and ohlc_cols:
-        st.subheader(f"{symbol} Data")
-        st.dataframe(recent_df.loc[:, ohlc_cols])
-    else:
-        st.info("No OHLC data available.")
-
-    # Metric selection and chart
-    metric, window = get_metric_and_window(
-        ["Open", "High", "Low", "Close", "Volatility"], "single_metric"
-    )
-    df_for_plot = df_live.reset_index().rename(columns={"index": "Date"})
-    plot_stock_metric(df_for_plot, metric, window if metric ==
-                      "Volatility" else None)
-
-    # Volatility & Ratio / ADX tables
-    fixed_periods, ratio_ref_period = get_period_inputs(len(df_live))
-    vol_rows = compute_volatility_and_ratios(
-        df_live, fixed_periods, ratio_ref_period)
-    adx_rows = compute_adx_table(df_live, fixed_periods)
-
-    if vol_rows:
-        st.subheader(f"{symbol} — Volatility & Ratio Table")
-        st.dataframe(pd.DataFrame(vol_rows))
-    else:
-        st.info("Volatility & ratio calculations unavailable for this symbol.")
-
-    if adx_rows:
-        st.subheader(f"{symbol} — ADX Table")
-        st.dataframe(pd.DataFrame(adx_rows))
-    else:
-        st.info("ADX calculations unavailable for this symbol.")
-
-
-# ----------------------------
-# Compare Stocks Renderer
-# ----------------------------
-def render_compare_stocks(symbols: list[str]):
-    st.title("📊 Trade Jockey Dashboard - Compare Stocks")
-    valid_data = {}
-    for sym in symbols:
-        df = _get_live(sym)
-        if df is not None and not df.empty:
-            valid_data[sym] = df
-        else:
-            st.warning(f"No live data found for {sym}. Skipping.")
-
-    if not valid_data:
-        st.error("No valid data found for any selected stocks.")
-        return
-
-    max_len = max(len(df) for df in valid_data.values())
-    fixed_periods, ratio_ref_period = get_period_inputs(max_len)
-
-    all_rows = []
-    for sym, df in valid_data.items():
-        vol_rows = compute_volatility_and_ratios(
-            df, fixed_periods, ratio_ref_period)
-        for row in vol_rows:
-            row["Symbol"] = sym
-            all_rows.append(row)
-
-    if not all_rows:
-        st.error("Volatility & ratio calculations unavailable for selected symbols.")
-        return
-
-    vol_df = pd.DataFrame(all_rows)
-    st.subheader("Volatility & Ratio Comparison Table")
-    st.dataframe(vol_df)
-
-    # Plot each stock
-    for sym, df in valid_data.items():
-        st.markdown(f"### {sym} - Close Price Chart")
-        df_for_plot = df.reset_index().rename(columns={"index": "Date"})
-        plot_stock_metric(df_for_plot, "Close", None)
-
-
-# ----------------------------
-# Main Entry
-# ----------------------------
 def main():
     st.set_page_config(page_title="Trade Jockey Dashboard", layout="wide")
     mode = st.sidebar.radio("Select mode", ["Single Stock", "Compare Stocks"])
