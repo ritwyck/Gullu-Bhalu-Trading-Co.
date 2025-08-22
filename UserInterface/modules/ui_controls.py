@@ -42,16 +42,23 @@ def get_metric_and_window(metric_options, key):
 
 def get_period_inputs(df_len, key_prefix=""):
     fixed_periods = [5, 10, 15, 30, 60, 100]
+
     custom_period = st.number_input(
         "Select Volatility period in days",
-        min_value=2, max_value=df_len, value=10, key=f"{key_prefix}_custom_vol_period"
+        min_value=2, max_value=df_len,
+        value=min(10, df_len),  # make sure default <= df_len
+        key=f"{key_prefix}_custom_vol_period"
     )
+
     if custom_period not in fixed_periods:
         fixed_periods.append(custom_period)
     fixed_periods = sorted(fixed_periods)
+
     ratio_ref_period = st.number_input(
         "Select Ratio period in days",
         min_value=2, max_value=df_len,
-        value=5, step=1, key=f"{key_prefix}_ratio_ref_period"
+        value=min(5, df_len),  # clamp again
+        step=1, key=f"{key_prefix}_ratio_ref_period"
     )
+
     return fixed_periods, ratio_ref_period
