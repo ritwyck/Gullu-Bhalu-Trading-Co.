@@ -5,43 +5,88 @@ from Logic.Strategy.adx import calculate_adx
 from UserInterface.modules.data_loading import load_symbol_data
 
 
-def compute_multiple_volatility_ratios(selected_symbols, files, data_folder, custom_period, ratio_ref_period):
-    # Defensive conversion for inputs that might be lists from query params
+def compute_multiple_volatility_ratios(
+    selected_symbols, files, data_folder, custom_period, ratio_ref_period
+):
+    """
+    Compute volatility and ratios for multiple symbols.
+
+    - Volatility is calculated using historical_volatility (annualized).
+    - Vol_{p}d columns contain the volatilities for each period p.
+    - Ratio_{p}d columns contain the ratio relative to ratio_ref_period.
+
+    Parameters
+    ----------
+    selected_symbols : list[str]
+        List of symbol tickers to process.
+    files : dict or list
+        Reference to available data files (passed to load_symbol_data).
+    data_folder : str or pathlib.Path
+        Base folder where input data is stored.
+    custom_period : int | list[int]
+        Custom lookback period (days). If list, first element is used.
+    ratio_ref_period : int | list[int]
+        Reference period for ratio calculations. If list, first element is used.
+
+    Returns
+    -------
+    pd.DataFrame
+        Table of volatilities and ratios by symbol.
+    """
+
+    # Defensive conversion for cases where query params pass lists
     if isinstance(custom_period, list):
         custom_period = int(custom_period[0])
     if isinstance(ratio_ref_period, list):
-        ratio_ref_period = int(ratio_ref_period[0])
+        ratio_ref_period = int(ratio_ref_period)
 
     fixed_periods = [5, 10, 30, 100]
     all_rows = []
+
     for sym in selected_symbols:
         df = load_symbol_data(data_folder, sym, files)
-        if df is None:
+        if df is None or "Close" not in df.columns:
             continue
+
+        # combine fixed + custom periods
         periods = fixed_periods.copy()
         if custom_period not in periods:
             periods.append(custom_period)
         periods = sorted(periods)
-        row_data = {"Symbol": sym}
+
+        row = {"Symbol": sym}
+
+        # reference vol only if we have enough data
         if ratio_ref_period <= len(df):
             _, ref_vol = historical_volatility(
                 df.tail(ratio_ref_period)["Close"])
         else:
             ref_vol = None
+
+        # Compute volatility for each period
         for p in periods:
             if p <= len(df):
-                _, annual_vol = historical_volatility(df.tail(p)["Close"])
-                row_data[f"Vol_{p}d"] = round(annual_vol, 3)
+                _, vol = historical_volatility(df.tail(p)["Close"])
+                row[f"Vol_{p}d"] = round(vol, 3) if vol is not None else pd.NA
+            else:
+                row[f"Vol_{p}d"] = pd.NA
+
+        # Compute ratio vs reference
         for p in periods:
             if p <= len(df):
-                _, annual_vol = historical_volatility(df.tail(p)["Close"])
-                ratio_val = (
-                    annual_vol / ref_vol) if (ref_vol and ref_vol != 0) else pd.NA
-                row_data[f"Ratio_{p}d"] = round(
-                    ratio_val, 3) if ratio_val is not pd.NA else pd.NA
-        all_rows.append(row_data)
-    final_df = pd.DataFrame(all_rows).round(3)
-    return final_df
+                _, vol = historical_volatility(df.tail(p)["Close"])
+                if ref_vol and ref_vol != 0:
+                    ratio_val = vol / ref_vol
+                else:
+                    ratio_val = None
+                row[f"Ratio_{p}d"] = round(
+                    ratio_val, 3) if ratio_val else pd.NA
+            else:
+                row[f"Ratio_{p}d"] = pd.NA
+
+        all_rows.append(row)
+
+    return pd.DataFrame(all_rows).round(3)
 
 
 def _last_valid(s: pd.Series) -> float | None:

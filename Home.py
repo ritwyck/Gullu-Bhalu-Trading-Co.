@@ -20,10 +20,10 @@ hide_default_nav()
 page = custom_sidebar()
 
 routes = {
-    "Home": render_backdrop,
-    "All-Stocks": render_all_stocks,
-    "Compare-Stocks": render_compare_stocks,
     "Stocks": render_single_stock,
+    "Compare-Stocks": render_compare_stocks,
+
+    "All-Stocks": render_all_stocks
 }
 
 routes.get(page, lambda: st.error("Page not found"))()

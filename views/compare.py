@@ -7,6 +7,7 @@ from UserInterface.modules.ui_controls import get_period_inputs
 from UserInterface.modules.calculations import compute_multiple_volatility_ratios
 
 
+# Cache only during session; data is discarded when the session ends
 @st.cache_data(show_spinner=False)
 def _get_live(symbol: str) -> pd.DataFrame | None:
     """Safe wrapper around fetch_historical_data with normalized DatetimeIndex."""
@@ -105,7 +106,7 @@ def render_compare_stocks():
     # --- Get user inputs for period and ratio reference ---
     custom_period, ratio_ref_period = get_period_inputs(max_len)
 
-    # --- Compute volatility & ratios (ensure adaptation for live data) ---
+    # --- Compute volatility & ratios ---
     final_df = compute_multiple_volatility_ratios(
         selected_symbols, None, None, custom_period, ratio_ref_period
     )

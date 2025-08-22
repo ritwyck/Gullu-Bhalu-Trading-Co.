@@ -73,7 +73,7 @@ def render_single_stock():
     ohlc_cols = [c for c in ["Open", "High",
                              "Low", "Close"] if c in df_live.columns]
     if not recent_df.empty and ohlc_cols:
-        st.subheader(f"{selected_symbol} — Recent OHLC Data (30 days)")
+        st.subheader(f"{selected_symbol} Data")
         st.dataframe(recent_df.loc[:, ohlc_cols])
     else:
         st.info("No OHLC data available.")
