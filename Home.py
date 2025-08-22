@@ -7,7 +7,6 @@ from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 from Page.singleStock import render_single_stock
 from Page.multipleStock import render_multi_stocks
-import plotly.graph_objects as go
 
 
 def main():
@@ -87,17 +86,6 @@ def main():
         if not valid_data:
             st.error("No valid data found for selected stocks.")
             return
-
-        # Combine into one chart
-        st.subheader("📈 Price Comparison")
-        fig = go.Figure()
-        for sym, df in valid_data.items():
-            fig.add_trace(go.Scatter(
-                x=df.index, y=df["Close"], mode="lines", name=sym
-            ))
-        fig.update_layout(xaxis_title="Date",
-                          yaxis_title="Close Price", hovermode="x unified")
-        st.plotly_chart(fig, use_container_width=True)
 
         # Volatility & Ratios
         max_len = max(len(df) for df in valid_data.values())
