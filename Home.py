@@ -7,6 +7,7 @@ from UserInterface.modules.plot import plot_stock_metric
 from UserInterface.modules.calculations import compute_volatility_and_ratios, compute_adx_table
 from Page.singleStock import render_single_stock
 from Page.multipleStock import render_multi_stocks
+import plotly.graph_objects as go
 
 
 def main():
@@ -89,7 +90,6 @@ def main():
 
         # Combine into one chart
         st.subheader("📈 Price Comparison")
-        import plotly.graph_objects as go
         fig = go.Figure()
         for sym, df in valid_data.items():
             fig.add_trace(go.Scatter(
@@ -117,7 +117,7 @@ def main():
         else:
             st.info("Volatility & ratio calculations unavailable.")
 
-            render_compare_stocks(selected_symbols)
+            render_multi_stocks(selected_symbols)
 
 
 if __name__ == "__main__":
