@@ -55,7 +55,7 @@ def render_compare_stocks():
         selected_symbols = selected_symbols[:10]
 
     # --- Update URL param for selected symbols ---
-    st.experimental_set_query_params(symbols=",".join(selected_symbols))
+    st.query_params["symbol"] = selected_symbols
 
     # --- Fetch live historical data for each selected symbol and get lengths ---
     lens = []

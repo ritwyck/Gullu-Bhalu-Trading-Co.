@@ -37,7 +37,7 @@ def render_single_stock():
         return
 
     # --- Update URL param for selected symbol ---
-    st.experimental_set_query_params(symbol=selected_symbol)
+    st.query_params["symbol"] = selected_symbol
 
     # --- Fetch live historical data for selected symbol ---
     df_live = fetch_historical_data(selected_symbol)
